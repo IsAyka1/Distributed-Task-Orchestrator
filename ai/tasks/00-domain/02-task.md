@@ -35,23 +35,3 @@ Run go build ./cmd/orchestrator and go test ./... in a clean environment; verify
 ## Split or decision boundary
 
 Resolve conflicting contracts or product choices before dependent implementation. If business logic exceeds 500 changed lines, split the task into independently tested PRs and update dependencies. Keep regression tests with their behavior change; tests and documentation do not consume the limit.
-
-## Verification results
-
-Verified with Go 1.27.1 and GNU Make 4.3:
-
-- `go build ./cmd/orchestrator`, `go test ./...`, and `make check` passed.
-  The bootstrap has no unit test cases yet; Go reports `[no test files]`.
-- `./bin/orchestrator` exited successfully; `gofmt -l .` produced no output;
-  `git diff --check` passed.
-- Build, test, check, and executable smoke passed again in a temporary Git
-  repository with a minimal environment, fresh caches, and `GOPROXY=off`.
-- In the temporary copy, `make check-fmt` rejected deliberately unformatted Go
-  without modifying it; `make fmt` repaired it and the format check passed.
-- Python integration/failure and race checks are not applicable: no database or
-  concurrent code is introduced. Shared time/mock conventions are documented in
-  README; implementations follow with actual consumers and the 01-01 harness.
-- No application contract or data model changes; no migration is needed.
-- Diff reviewed: **0 business-logic additions + deletions** against main.
-  Module metadata, Makefile, ignore rules, and the six-line entry point are
-  non-business scaffolding; all other changes are documentation.
