@@ -4,6 +4,7 @@ These documents describe the orchestrator's requirements, architecture, and data
 
 - [Project context](01-context.md): goals, guarantees, and invariants.
 - [Code structure](02-code-structure.md): package boundaries, transactions, and test architecture.
+- [MVP execution contract](../../docs/decisions/0001-mvp-contract.md): canonical model choices, HTTP errors, and race scenarios.
 - [Data model](03-data-model.md): entities, transitions, leases, and wakeups.
 - [Roadmap](04-roadmap.md): stage scope and failure criteria.
 

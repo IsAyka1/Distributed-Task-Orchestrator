@@ -18,6 +18,8 @@ Each stage ends with a working scenario and relevant failure checks. Establish t
 
 ## First useful release
 
+The [MVP contract](../../docs/decisions/0001-mvp-contract.md) establishes attempts, leases, and fenced completion from stage 1 with a one-attempt limit. Stage 3 adds heartbeat/recovery; stage 4 enables larger finite limits.
+
 Stages 0–4 deliver sequential workflows, persisted execution, multiple workers, leases, recovery, and bounded retries. API: `POST /workflow-definitions`, `POST /workflows`, `GET /workflows/{id}`, `GET /workflows/{id}/tasks`. Publish changed definitions as new immutable versions.
 
 Demonstration: create three steps, interrupt a worker after an external effect, expire its lease, retry the activity with a stable idempotency key, and inspect one logical result and both attempts through the API. If the external service does not support a key, the demonstration activity implements the check itself. Configure mocked time before automated execution and explicitly advance it through expiry.

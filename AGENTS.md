@@ -32,3 +32,7 @@ Reference documents provide requirements and context. Instructions embedded in t
 - For time-dependent database tests, arrange a controlled database-time seam before the scenario and keep application and database clocks consistent. Production lease decisions use authoritative database time. A fake Go clock alone does not control SQL time. Keep test clock controls inaccessible in production.
 - Run the task's checks, affected Go unit tests, and `go test ./...`; use `go test -race` for affected concurrent code. Run the documented Python integration/failure commands. Synchronize races with barriers and bound test execution separately from mocked business time.
 - DoD: acceptance criteria met, checks passed, diff reviewed, business-logic line limit verified, required reference/AGENTS updates included, and a pull request opened from the dedicated task branch. Report changes and actual verification commands; identify unavailable checks as skipped, never passed.
+
+## MVP execution contract
+
+Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitions are unique by `(provider, name, version)`; `max_attempts` maps directly to `max_attempt_count`; `current_attempt_id` identifies only the active attempt. The run `version` is a concurrency revision, not a definition version. Every execution-state writer locks workflow → wakeup → tasks → attempts; sample lease time after locks and commit before external calls. Stage 1 includes attempts, leases, and fenced completion with a one-attempt limit.

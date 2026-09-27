@@ -11,6 +11,8 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 ## Outcome and PR scope
 
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
+
 Add POST /workflow-definitions and POST /workflows with DTOs, body limits, validation, and agreed errors.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.

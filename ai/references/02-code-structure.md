@@ -38,7 +38,7 @@ flowchart TD
 | Use case | Atomic action |
 | --- | --- |
 | `StartWorkflow` | Validate a definition, create a run and task_runs, enqueue a wakeup |
-| `EvaluateWorkflow` | Lock the workflow, read tasks, activate dependents, apply terminal transitions, delete the wakeup |
+| `EvaluateWorkflow` | Lock the workflow then wakeup/tasks, read tasks, activate dependents, apply terminal transitions, delete the wakeup |
 | `ClaimTasks` | Use `SKIP LOCKED`, create an attempt, set the fencing token and lease, commit before execution |
 | `CompleteAttempt` | Validate the attempt and lease, write the result, close the attempt, enqueue a wakeup |
 | `RecoverExpiredLeases` | Close the attempt, choose READY/RETRY_WAIT/FAILED, enqueue a wakeup |
@@ -46,8 +46,12 @@ flowchart TD
 The engine exposes pure functions such as `TransitionTask(task, event)` and `Evaluate(definition, taskRuns)`. They return changes or errors without calling the database or external services.
 
 ```go
+type Payload struct {
+    Value json.RawMessage
+}
+
 type Activity interface {
-    Execute(ctx context.Context, input json.RawMessage, idempotencyKey string) (json.RawMessage, error)
+    Execute(ctx context.Context, input Payload, idempotencyKey string) (Payload, error)
 }
 
 type TaskQueue interface {
@@ -67,3 +71,7 @@ Keep PostgreSQL authoritative for production lease and deadline decisions. Pytho
 Use Go for unit tests and Python for integration and failure tests. Share reusable mocks, fake external services, database fixtures, and process/barrier helpers. Do not replace real database transactions or locks with mocks. Use bounded wall-clock timeouts only to detect a hung test, not to determine a business outcome.
 
 Contract and data changes must update the affected references and `AGENTS.md` in the same PR.
+
+## MVP contract boundary
+
+Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named records, payload handling, HTTP errors, state transitions, and workflow-first lock order. All existing execution-state writers lock the workflow before wakeup/task/attempt rows, recheck discovered candidates, and increment the run revision once when changing run/task/attempt data. Claims use one workflow per transaction; leases and attempt fencing exist from stage 1. Activity JSON is an opaque named payload at the orchestrator boundary and validated into activity-specific types by adapters.

@@ -11,6 +11,8 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 ## Outcome and PR scope
 
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
+
 Add pure PENDING/READY/RUNNING/SUCCEEDED/FAILED transitions and baseline attempt outcomes, with events separate from I/O.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.

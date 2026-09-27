@@ -11,6 +11,8 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 ## Outcome and PR scope
 
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
+
 Implement definition types, defensive copying, and pure validation of task IDs, dependencies, and cycles. Keep DAG execution gated until stage 5.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.

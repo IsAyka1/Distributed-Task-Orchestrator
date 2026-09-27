@@ -11,6 +11,8 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 ## Outcome and PR scope
 
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
+
 StartWorkflow writes the run, task_runs, and wakeup in one transaction, accepting only sequential definitions at this stage.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.

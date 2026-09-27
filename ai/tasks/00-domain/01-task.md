@@ -7,9 +7,11 @@
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
+
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
 
 Record state, field, and HTTP error contracts in docs/decisions before defining the schema.
 

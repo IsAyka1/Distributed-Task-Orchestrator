@@ -6,7 +6,7 @@ Build the Distributed Task Orchestrator in small, independently verifiable PRs. 
 
 - The architecture is a modular Go monolith with PostgreSQL. Stages 0–4 define the first useful release. Deployment, Kafka, leader election, Saga, replay, reset, UI, and authentication require separate scope.
 - Stage 1 establishes baseline attempts, leases, fencing, and atomic claim. Stage 2 verifies multiple processes; stage 3 adds heartbeat/recovery; stage 4 adds retry policy and API history. Stage-1 restart checks happen between attempts; recovery tests cover interrupted RUNNING attempts in stage 3.
-- [00-01](00-domain/01-task.md) defines canonical attempt fields, finite limits, run.version, immutable definition uniqueness, input/output propagation, and lock order. Keep these choices synchronized with the data reference rather than resolving them implicitly in SQL.
+- [00-01](00-domain/01-task.md) records the [MVP contract](../../docs/decisions/0001-mvp-contract.md), which defines canonical attempt fields, finite limits, run.version, immutable definition uniqueness, input/output propagation, and lock order. Keep these choices synchronized with the data reference rather than resolving them implicitly in SQL.
 - Definition validation checks cycles in stage 0. Stage 5 enables DAG execution. Dedicated contract tasks define branch-failure/input merging, timer deadlines, early events, idempotency namespaces, and pause/resume.
 - All writers follow a consistent workflow/wakeup/task lock order. Test lost-wakeup races in stage 1 even when its demonstration uses one process.
 - Select and pin compatible Go/PostgreSQL/tool versions during bootstrap. Establish reusable clocks/mocks and the Python integration harness before dependent behavior is implemented.

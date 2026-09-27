@@ -53,3 +53,5 @@ Start every task on a new dedicated Git branch and finish it by opening a pull r
 Limit each PR to 500 changed business-logic lines; tests and documentation are excluded. Build reusable test doubles and mock time before running time-dependent scenarios. Write integration tests in Python against isolated, real PostgreSQL. Contract or data changes require updates to the affected references and `AGENTS.md` in the same PR.
 
 See [code structure](02-code-structure.md), [data model](03-data-model.md), and [roadmap](04-roadmap.md).
+
+The [MVP execution contract](../../docs/decisions/0001-mvp-contract.md) fixes provider-scoped immutable versions, finite attempt counters, run revisions, sequential value propagation, and HTTP errors. All execution-state writers acquire the workflow lock before wakeup/task/attempt locks; task completion and wakeup insertion remain atomic.
