@@ -29,12 +29,6 @@ Follow `00 → 01 → … → 10` and each stage's task order. This is a conserv
 | [9. Observability](09-observability/README.md) | 4 | Telemetry and history explain every retry and reason for missing progress. |
 | [10. Control](10-control/README.md) | 5 | Cancellation and pause/resume persist across restarts and cannot revive terminal workflows. |
 
-## Supporting infrastructure
-
-| Task | Outcome | Status |
-| --- | --- | --- |
-| [CI-01](ci-01-github-actions.md) | GitHub Actions build, Go style/tests, Python test gate, and coverage | Done |
-
 ## Execution rules
 
 - Before taking a task, inspect the working tree, preserve local changes, and always run `git pull --ff-only` on the intended base branch. Resolve pull failures or conflicts before implementation without discarding local work. Then create a new dedicated branch using `<task-id>-<short-description>` by default; do not include `codex` anywhere in branch names. Never implement a task on the base branch or reuse another task's branch.
