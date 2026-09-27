@@ -11,6 +11,8 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 ## Outcome and PR scope
 
+Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
+
 Implement the single SQL claim path in storage/postgres using SKIP LOCKED. Claim one READY task, create its attempt, set owner/token/expiry, and commit before returning.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
