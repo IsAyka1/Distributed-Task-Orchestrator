@@ -13,6 +13,11 @@ Create a new dedicated branch from the appropriate base, using `codex/<task-id>-
 
 Add connection configuration, a migrator, isolated test database setup, and documented Python integration commands. Share fixtures, process helpers, reusable mocks, and a controlled clock seam.
 
+Expose `make test-python` for the existing CI Python gate: install pinned test
+dependencies, provision and clean up isolated PostgreSQL, and run the integration
+and failure suites. Align the workflow's provisional Python 3.13 selection with
+the harness pin. Missing prerequisites or failed tests must fail the command.
+
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
 
 ## Definition of Done

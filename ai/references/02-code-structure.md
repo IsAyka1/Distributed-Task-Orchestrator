@@ -64,6 +64,13 @@ type TaskQueue interface {
 
 ## Time and reusable test support
 
+GitHub Actions runs build, Go style (`gofmt` and `go vet`), and Go tests with race
+detection and coverage. Python tests are explicitly skipped while none exist.
+When adding the Python harness, expose `make test-python` to install its pinned
+dependencies, provision/clean up isolated PostgreSQL, and execute the integration
+and failure suites. Align the workflow's Python version with the harness pin.
+The CI gate must fail if tests exist but the harness command is absent or fails.
+
 Inject time into time-dependent business logic. Configure reusable fake clocks before constructing the tested component, including its timers and tickers; explicitly advance time in assertions. Inject deterministic randomness for jitter. Pure functions can accept an explicit instant rather than reading a clock.
 
 Keep PostgreSQL authoritative for production lease and deadline decisions. Python integration fixtures must configure a controlled database-time seam before a temporal scenario, align it with the application's clock, and reset both between tests. Test-only time controls must not be exposed by production configuration or public endpoints.

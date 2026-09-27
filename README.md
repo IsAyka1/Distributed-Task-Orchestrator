@@ -24,9 +24,11 @@ Run from the repository root:
 ```sh
 make fmt        # apply gofmt
 make check-fmt  # fail on unformatted Go files without changing them
+make vet        # run Go static analysis
 make build      # build bin/orchestrator
 make test       # run all Go unit tests
-make check      # formatting check, build, and unit tests
+make check      # formatting, static analysis, build, and unit tests
+make coverage   # run all Go tests with race detection and coverage reports
 ./bin/orchestrator
 ```
 
@@ -39,6 +41,25 @@ go build ./cmd/orchestrator
 go test ./...
 gofmt -l .      # must print nothing
 ```
+
+## Continuous integration
+
+[CI](.github/workflows/ci.yml) runs on pull requests, pushes to `main`, and manual
+dispatch. Independent jobs build the binary, check `gofmt` and `go vet`, and run
+all Go tests with the race detector and package-wide coverage. Go follows the
+version in `go.mod`. Coverage appears in the job summary and the `go-coverage`
+artifact (profile, text summary, and HTML report), retained for 14 days. There is
+no minimum coverage threshold. Run `make coverage` locally to generate the same
+reports under the ignored `coverage/` directory; race detection requires a C compiler.
+
+The Python job explicitly reports a skip while no tracked `test_*.py` or
+`*_test.py` files exist (including nested directories). Once tests exist, it
+requires `make test-python` and fails if that command is missing or fails.
+[Task 01-01](ai/tasks/01-durable-sequence/01-task.md) will supply that command,
+including pinned dependencies, isolated PostgreSQL setup/cleanup, and running
+the integration and failure suites. The workflow provisionally selects Python
+3.13; the harness task must align it with its chosen version. Python coverage is
+deferred with the harness; this PR reports Go application coverage.
 
 ## Test conventions
 
