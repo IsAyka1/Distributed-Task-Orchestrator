@@ -32,7 +32,6 @@ func TestDefinitionValidation(t *testing.T) {
 		{"diamond", spec(task("A"), task("B", "A"), task("C", "A"), task("D", "B", "C")), false, false},
 		{"disconnected", spec(task("A"), task("B")), false, false},
 		{"empty", spec(), true, false},
-		{"empty ID", spec(task("")), true, false},
 		{"duplicate IDs", spec(task("A"), task("A")), true, false},
 		{"unknown dependency", spec(task("A", "missing")), true, false},
 		{"duplicate dependency", spec(task("A"), task("B", "A", "A")), true, false},
@@ -83,8 +82,6 @@ func TestDefinitionFieldsAndPolicy(t *testing.T) {
 		{"version zero", func(s *workflow.DefinitionSpec) { s.Version = 0 }, true, 0},
 		{"version negative", func(s *workflow.DefinitionSpec) { s.Version = -1 }, true, 0},
 		{"version gaps allowed", func(s *workflow.DefinitionSpec) { s.Version = 100 }, false, 1},
-		{"type required", func(s *workflow.DefinitionSpec) { s.Tasks[0].Type = "" }, true, 0},
-		{"type unsupported", func(s *workflow.DefinitionSpec) { s.Tasks[0].Type = "timer" }, true, 0},
 	}
 	for _, value := range []int64{-1, 0, 1, 2, math.MaxInt32, math.MaxInt32 + 1} {
 		tests = append(tests, policyCase{

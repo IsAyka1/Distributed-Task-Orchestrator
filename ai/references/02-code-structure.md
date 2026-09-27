@@ -78,17 +78,8 @@ Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named r
 
 ## Immutable definition interface
 
-`internal/workflow.NewDefinition(DefinitionSpec)` returns a validated immutable
-`*Definition` or an error wrapping `ErrInvalidDefinition` (use `errors.Is`).
-`DefinitionSpec` and `TaskSpec` are named mutable constructor inputs. A nil
-`TaskSpec.MaxAttempts` defaults to 1; an explicit value must fit the positive
-signed 32-bit range. `TaskDefinition` snapshots contain the normalized limit.
-
-`Provider`, `Name`, and `Version` expose identity unchanged; `Tasks` returns
-deep copies in declaration order. Execution order must be derived from dependencies.
-`ValidateSequence` returns `ErrUnsupportedWorkflow` for valid graphs with forks,
-joins, or disconnected chains; the zero definition returns `ErrInvalidDefinition`.
-Execution callers must apply this gate until stage 5. Publication UUID/time and
-uniqueness are application/storage concerns; the pure constructor has no clock,
-I/O, JSON decoding, or registry lookup. Boundary DTOs enforce JSON shape before
-calling it. Attempt-limit support on start remains a separate application gate.
+`internal/workflow` validates and copies definition inputs into immutable snapshots.
+`definition.go` holds types, construction, and accessors; `validation.go` checks
+metadata, policies, dependencies, cycles, and sequence eligibility.
+`Tasks` returns detached copies in declaration order. `ValidateSequence` gates
+execution to a single chain until stage 5.
