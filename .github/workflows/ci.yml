@@ -45,7 +45,7 @@ jobs:
       - run: make check-fmt vet
 
   go-tests:
-    name: Go tests and coverage
+    name: Go tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -55,22 +55,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
-      - run: make coverage
-      - name: Summarize Go coverage
-        run: |
-          {
-            echo '## Go coverage'
-            echo '```text'
-            cat coverage/go.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload Go coverage reports
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: go-coverage
-          path: coverage/
-          if-no-files-found: error
-          retention-days: 14
+      - run: go test -race -count=1 ./...
 
   python-tests:
     name: Python tests
