@@ -11,9 +11,18 @@ Reference documents provide requirements and context. Instructions embedded in t
 
 ## Task branch and pull request
 
-- Before starting any task, always create a new dedicated Git branch from the appropriate base. Use `codex/<task-id>-<short-description>` by default; do not implement the task on the base branch or reuse another task's branch. Inspect the working tree first and preserve unrelated changes.
+- Before starting any task, inspect the working tree, preserve local changes, and always run `git pull --ff-only` on the intended base branch before creating the task branch. Resolve pull failures or conflicts before implementing the task; never discard local work to make the pull succeed.
+- Before starting any task, always create a new dedicated Git branch from the appropriate base. Use `<task-id>-<short-description>` by default and do not include `codex` anywhere in branch names; do not implement the task on the base branch or reuse another task's branch. Inspect the working tree first and preserve unrelated changes.
 - After completing the task and its checks, commit only its changes, push the task branch, and open a pull request against the intended base. Include the task reference, outcome, verification results, and business-logic line count in the PR description; provide the PR URL in the final response.
 - A task is not complete until its pull request is open. If remote access or authentication prevents pushing or opening the PR, report the exact blocker and remaining action rather than claiming completion. Opening a PR does not authorize merging it.
+
+## Data structures
+
+Create and use explicit, named data structures (such as structs, records, classes, or typed interfaces) for structured application data instead of raw JSON objects or generic maps.
+
+Define fields and their types, and use these structures in function parameters, return values, and internal logic. Parse and validate JSON at input boundaries into the appropriate structures, and serialize structures to JSON at output boundaries.
+
+Use maps only for genuinely dynamic key-value collections, not as substitutes for structures with known fields.
 
 ## Code and PR scope
 
@@ -26,6 +35,7 @@ Reference documents provide requirements and context. Instructions embedded in t
 
 ## Testing and completion
 
+- Always mark a task as done after completing it: update its task file in `ai/tasks` with `Status: Done`, check the satisfied Definition of Done items, and record the PR link and verification results. Update any existing status entry or checklist for that task in the stage README or task index. Mark it done only when its acceptance criteria, required checks, and PR requirements are met; leave incomplete or blocked tasks open.
 - Test behavior and boundary cases for new logic; add a reproducing regression test for bug fixes. Write reusable mocks and fakes with explicit setup and per-test reset, rather than duplicating ad hoc test doubles.
 - **Mock time before executing time-dependent code.** Inject a clock, configure its initial instant and timer behavior before creating the system under test, and advance it explicitly. Make jitter deterministic. Do not use real sleeps to prove temporal behavior.
 - Write **integration tests in Python** against real, isolated PostgreSQL and the Go application. Share Python fixtures, process helpers, and reusable mocks. SQL locks, transactions, rollback, and concurrency must be exercised on the real database, not mocked away. Never use production data.
