@@ -33,7 +33,7 @@ Follow `00 → 01 → … → 10` and each stage's task order. This is a conserv
 
 | Task | Outcome | Status |
 | --- | --- | --- |
-| [CI-01](ci-01-github-actions.md) | GitHub Actions build, Go style/tests, Python test gate, and coverage | In progress |
+| [CI-01](ci-01-github-actions.md) | GitHub Actions build, Go style/tests, Python test gate, and coverage | Done |
 
 ## Execution rules
 
