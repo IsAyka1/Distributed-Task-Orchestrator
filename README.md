@@ -24,9 +24,11 @@ Run from the repository root:
 ```sh
 make fmt        # apply gofmt
 make check-fmt  # fail on unformatted Go files without changing them
+make vet        # run Go static analysis
 make build      # build bin/orchestrator
 make test       # run all Go unit tests
-make check      # formatting check, build, and unit tests
+make check      # formatting, static analysis, build, and unit tests
+make coverage   # run all Go tests with race detection and coverage reports
 ./bin/orchestrator
 ```
 
@@ -39,6 +41,12 @@ go build ./cmd/orchestrator
 go test ./...
 gofmt -l .      # must print nothing
 ```
+
+## Continuous integration
+
+[CI](.github/workflows/ci.yml) builds, checks Go style, and runs tests with race
+detection on pull requests and pushes to `main`. Coverage percentages appear in
+the test logs. Run `make coverage` locally for coverage reports.
 
 ## Test conventions
 
