@@ -1,5 +1,9 @@
 # 00-03. Add immutable definitions and graph validation
 
+Status: Done
+
+PR: [#4](https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/4)
+
 - Dependency: [00-02](../00-domain/02-task.md) must meet its acceptance criteria.
 - PR size: estimated **150–280 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
 - Sources: [roadmap](../../references/04-roadmap.md), [context](../../references/01-context.md), [code structure](../../references/02-code-structure.md), [data model](../../references/03-data-model.md).
@@ -19,12 +23,12 @@ Deliver one independently verifiable PR for this outcome. Keep adjacent capabili
 
 ## Definition of Done
 
-- [ ] Duplicate IDs, unknown dependencies, self-loops, and cycles are rejected. Mutating an input slice/map cannot alter a published definition.
-- [ ] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
-- [ ] Reusable mocks are used where test doubles are needed. Time is mocked before time-dependent code runs. Integration tests are written in Python against real PostgreSQL.
-- [ ] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
-- [ ] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
-- [ ] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
+- [x] Duplicate IDs, unknown dependencies, self-loops, and cycles are rejected. Mutating an input slice/map cannot alter a published definition.
+- [x] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
+- [x] Reusable mocks are used where test doubles are needed. Time is mocked before time-dependent code runs. Integration tests are written in Python against real PostgreSQL. (For this pure domain task, reusable typed fixtures are used; clocks, mocks, and integration scenarios are not applicable.)
+- [x] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
+- [x] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
+- [x] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
 
 ## Testing
 
@@ -33,3 +37,19 @@ Go table tests: chain, branches, empty definition per contract, cycles in discon
 ## Split or decision boundary
 
 Resolve conflicting contracts or product choices before dependent implementation. If business logic exceeds 500 changed lines, split the task into independently tested PRs and update dependencies. Keep regression tests with their behavior change; tests and documentation do not consume the limit.
+
+## Verification results
+
+Verified with the cached Go 1.27.1 toolchain on `PATH` and a writable `GOCACHE`:
+
+- `make check`: formatting, binary build, and `go test ./...` passed.
+- `go vet ./...`: passed.
+- `go test -cover ./internal/workflow`: passed, 100% statement coverage.
+- Changed-document local link check and `git diff --check`: passed.
+- Diff reviewed against decision 0001; no remaining findings. Business logic:
+  151 additions + 0 deletions (all lines of `internal/workflow/definition.go`);
+  tests and documentation excluded. No migration or dependency changes.
+- Python integration/failure checks skipped: their harness is task 01-01;
+  this pure domain package has no database, process, or time behavior.
+  Reusable typed fixtures provide fresh inputs; no mocks or fake clocks are needed.
+  Race detection is not applicable because no concurrent code is added.
