@@ -35,7 +35,7 @@ Start creates a PENDING run/tasks and a wakeup. Evaluation starts the run and ac
 }
 ```
 
-Publication validates unique task IDs, existing dependencies, and acyclicity. Retry and timeout policies belong to the immutable definition version; changing the definition requires a new version.
+Publication validates nonempty case-sensitive identities, positive version, nonempty tasks, activity type, unique task IDs, unique existing dependencies, no self-dependencies, and acyclicity across all components. The publication boundary owns the nonempty task-ID and activity-type checks; the domain constructor does not enforce them. The pure domain constructor snapshots all mutable task data and exposes detached copies; default max_attempts is resolved to 1 without retaining the input policy pointer. Retry and timeout policies belong to the immutable definition version; changing the definition requires a new version.
 
 ## States
 

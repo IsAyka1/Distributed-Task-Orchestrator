@@ -27,6 +27,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 ## Code and PR scope
 
 - One PR addresses one task and changes at most **500 lines of business logic**, measured as additions + deletions against its base. Tests and documentation do not count. Count behavior-bearing SQL and migrations as business logic; exclude non-business scaffolding and generated metadata. Aim for 200–400 business-logic lines and split larger changes into independently verifiable tasks.
+- Add comments only for non-obvious intent, constraints, or behavior; avoid restating code or duplicating reference documentation.
 - Write simple Go and format it with `gofmt`. Avoid empty packages, speculative abstractions, and unrelated refactoring. Preserve other contributors' changes.
 - Keep domain and engine logic independent of HTTP, database drivers, and activity implementations. The application layer owns transactions; SQL claim logic belongs only in `storage/postgres`.
 - Pass `context.Context`, handle errors explicitly, bound background work, and stop loops on shutdown. Do not log secrets or arbitrary payloads.
@@ -35,7 +36,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 
 ## Testing and completion
 
-- Always mark a task as done after completing it: update its task file in `ai/tasks` with `Status: Done`, check the satisfied Definition of Done items, and record the PR link and verification results. Update any existing status entry or checklist for that task in the stage README or task index. Mark it done only when its acceptance criteria, required checks, and PR requirements are met; leave incomplete or blocked tasks open.
+- Always mark a task as done after completing it: update its task file in `ai/tasks` with `Status: Done`, check the satisfied Definition of Done items, and record the PR link. Keep verification results in the PR description, not in task files. Update any existing status entry or checklist for that task in the stage README or task index. Mark it done only when its acceptance criteria, required checks, and PR requirements are met; leave incomplete or blocked tasks open.
 - Test behavior and boundary cases for new logic; add a reproducing regression test for bug fixes. Write reusable mocks and fakes with explicit setup and per-test reset, rather than duplicating ad hoc test doubles.
 - **Mock time before executing time-dependent code.** Inject a clock, configure its initial instant and timer behavior before creating the system under test, and advance it explicitly. Make jitter deterministic. Do not use real sleeps to prove temporal behavior.
 - Write **integration tests in Python** against real, isolated PostgreSQL and the Go application. Share Python fixtures, process helpers, and reusable mocks. SQL locks, transactions, rollback, and concurrency must be exercised on the real database, not mocked away. Never use production data.
@@ -46,3 +47,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 ## MVP execution contract
 
 Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitions are unique by `(provider, name, version)`; `max_attempts` maps directly to `max_attempt_count`; `current_attempt_id` identifies only the active attempt. The run `version` is a concurrency revision, not a definition version. Every execution-state writer locks workflow → wakeup → tasks → attempts; sample lease time after locks and commit before external calls. Stage 1 includes attempts, leases, and fenced completion with a one-attempt limit.
+
+## Definition domain boundary
+
+Construct immutable definitions through `workflow.NewDefinition`; retain no caller-owned slices or policy pointers, and return detached task snapshots. Preserve identity strings exactly. The domain constructor does not enforce nonempty task IDs or activity type; publication boundaries own those field checks. Accept valid DAGs at definition validation, but execution callers must enforce `ValidateSequence` until stage 5. Domain definitions contain content; generated publication UUIDs, timestamps, and tuple uniqueness belong to application/storage.

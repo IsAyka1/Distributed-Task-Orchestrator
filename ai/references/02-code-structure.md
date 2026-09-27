@@ -75,3 +75,11 @@ Contract and data changes must update the affected references and `AGENTS.md` in
 ## MVP contract boundary
 
 Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named records, payload handling, HTTP errors, state transitions, and workflow-first lock order. All existing execution-state writers lock the workflow before wakeup/task/attempt rows, recheck discovered candidates, and increment the run revision once when changing run/task/attempt data. Claims use one workflow per transaction; leases and attempt fencing exist from stage 1. Activity JSON is an opaque named payload at the orchestrator boundary and validated into activity-specific types by adapters.
+
+## Immutable definition interface
+
+`internal/workflow` validates and copies definition inputs into immutable snapshots.
+`definition.go` holds types, construction, and accessors; `validation.go` checks
+metadata, policies, dependencies, cycles, and sequence eligibility.
+`Tasks` returns detached copies in declaration order. `ValidateSequence` gates
+execution to a single chain until stage 5.
