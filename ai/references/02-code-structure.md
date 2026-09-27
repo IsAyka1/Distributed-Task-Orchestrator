@@ -75,3 +75,20 @@ Contract and data changes must update the affected references and `AGENTS.md` in
 ## MVP contract boundary
 
 Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named records, payload handling, HTTP errors, state transitions, and workflow-first lock order. All existing execution-state writers lock the workflow before wakeup/task/attempt rows, recheck discovered candidates, and increment the run revision once when changing run/task/attempt data. Claims use one workflow per transaction; leases and attempt fencing exist from stage 1. Activity JSON is an opaque named payload at the orchestrator boundary and validated into activity-specific types by adapters.
+
+## Immutable definition interface
+
+`internal/workflow.NewDefinition(DefinitionSpec)` returns a validated immutable
+`*Definition` or an error wrapping `ErrInvalidDefinition` (use `errors.Is`).
+`DefinitionSpec` and `TaskSpec` are named mutable constructor inputs. A nil
+`TaskSpec.MaxAttempts` defaults to 1; an explicit value must fit the positive
+signed 32-bit range. `TaskDefinition` snapshots contain the normalized limit.
+
+`Provider`, `Name`, and `Version` expose identity unchanged; `Tasks` returns
+deep copies in declaration order. Execution order must be derived from dependencies.
+`ValidateSequence` returns `ErrUnsupportedWorkflow` for valid graphs with forks,
+joins, or disconnected chains; the zero definition returns `ErrInvalidDefinition`.
+Execution callers must apply this gate until stage 5. Publication UUID/time and
+uniqueness are application/storage concerns; the pure constructor has no clock,
+I/O, JSON decoding, or registry lookup. Boundary DTOs enforce JSON shape before
+calling it. Attempt-limit support on start remains a separate application gate.

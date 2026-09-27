@@ -7,7 +7,7 @@
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` without `codex` in the name. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 

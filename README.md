@@ -30,8 +30,8 @@ make check      # formatting check, build, and unit tests
 ./bin/orchestrator
 ```
 
-The bootstrap has no unit test cases yet; `go test` verifies package compilation
-and reports `[no test files]`. Add behavioral tests with the domain implementation.
+`go test` runs the pure definition validation and immutability tests in
+`internal/workflow`; the bootstrap command has no unit test cases.
 With Go 1.27.1 installed, the task's direct verification commands also work:
 
 ```sh
