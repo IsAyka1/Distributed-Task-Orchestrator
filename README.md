@@ -45,8 +45,8 @@ gofmt -l .      # must print nothing
 ## Continuous integration
 
 [CI](.github/workflows/ci.yml) builds, checks Go style, and runs tests with race
-detection on pull requests and pushes to `main`. Run `make coverage` locally
-for coverage reports.
+detection on pull requests and pushes to `main`. Coverage percentages appear in
+the test logs. Run `make coverage` locally for coverage reports.
 
 ## Test conventions
 

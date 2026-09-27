@@ -65,7 +65,8 @@ type TaskQueue interface {
 ## Time and reusable test support
 
 GitHub Actions runs build, Go style (`gofmt` and `go vet`), and Go tests with race
-detection. Python tests are explicitly skipped while none exist.
+detection and coverage percentages in test logs, without coverage report files
+or uploads. Python tests are explicitly skipped while none exist.
 When adding the Python harness, expose `make test-python` to install its pinned
 dependencies, provision/clean up isolated PostgreSQL, and execute the integration
 and failure suites. Align the workflow's Python version with the harness pin.

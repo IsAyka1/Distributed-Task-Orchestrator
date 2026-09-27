@@ -36,7 +36,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 
 ## Testing and completion
 
-- CI runs build, Go formatting/static analysis, and Go tests with race detection. Until the Python harness exists, report Python tests as skipped; once Python tests are added, provide `make test-python` with isolated database setup and never treat a missing harness or failing tests as a passing check.
+- CI runs build, Go formatting/static analysis, and Go tests with race detection and coverage percentages in the test logs, without coverage report files or uploads. Until the Python harness exists, report Python tests as skipped; once Python tests are added, provide `make test-python` with isolated database setup and never treat a missing harness or failing tests as a passing check.
 - Always mark a task as done after completing it: update its task file in `ai/tasks` with `Status: Done`, check the satisfied Definition of Done items, and record the PR link. Keep verification results in the PR description, not in task files. Update any existing status entry or checklist for that task in the stage README or task index. Mark it done only when its acceptance criteria, required checks, and PR requirements are met; leave incomplete or blocked tasks open.
 - Test behavior and boundary cases for new logic; add a reproducing regression test for bug fixes. Write reusable mocks and fakes with explicit setup and per-test reset, rather than duplicating ad hoc test doubles.
 - **Mock time before executing time-dependent code.** Inject a clock, configure its initial instant and timer behavior before creating the system under test, and advance it explicitly. Make jitter deterministic. Do not use real sleeps to prove temporal behavior.
