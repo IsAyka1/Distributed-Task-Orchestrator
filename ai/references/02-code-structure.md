@@ -67,7 +67,8 @@ type TaskQueue interface {
 GitHub Actions runs build, Go style (`gofmt` and `go vet`), and Go tests with race
 detection and coverage percentages in test logs, without coverage report files
 or uploads. `make test-python` runs both Python suites with pinned dependencies
-and disposable PostgreSQL/Python containers; missing prerequisites fail the gate.
+and disposable PostgreSQL/Python services from `docker-compose.test.yml`; missing
+prerequisites fail the gate. Each run uses its own Compose project and cleanup.
 See [development commands](../../README.md#development-commands) for isolation
 and cleanup. Shared fixtures in `tests/conftest.py` provide database lifetimes,
 bounded Go process execution and aligned application/database clock control.

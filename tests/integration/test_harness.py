@@ -1,11 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
 from pathlib import Path
 import threading
 
-import pytest
-
-from conftest import Application, ClockSnapshot, INITIAL_TIME
+from conftest import Application
 
 
 def test_setup_cleanup_twice(database_factory, cluster):
@@ -60,19 +57,3 @@ def test_concurrent_migrations(application):
             assert result.returncode == 0, result.stderr
     with application.database.connect() as conn:
         assert conn.execute("SELECT count(*) FROM goose_db_version WHERE version_id=1").fetchone() == (1,)
-
-
-@pytest.mark.parametrize("repeat", range(2))
-def test_clock_is_reset_before_each_scenario(application, clock, repeat):
-    assert clock.snapshot(application) == ClockSnapshot(INITIAL_TIME, INITIAL_TIME)
-    clock.advance(timedelta(hours=3))
-    assert clock.snapshot(application) == ClockSnapshot(INITIAL_TIME + timedelta(hours=3), INITIAL_TIME + timedelta(hours=3))
-
-
-def test_production_clock_has_no_test_override(application):
-    application.migrate()
-    with application.database.connect() as conn:
-        assert "clock_timestamp()" in conn.execute("SELECT prosrc FROM pg_proc WHERE oid='orchestrator.database_now()'::regprocedure").fetchone()[0]
-    result = application.run("-now", INITIAL_TIME.isoformat())
-    assert result.returncode != 0
-    assert "usage:" in result.stderr

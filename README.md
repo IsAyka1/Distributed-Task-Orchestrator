@@ -10,10 +10,10 @@ workflow services follow in later tasks.
 - [Go 1.27.1](https://go.dev/dl/) on `PATH`; `go.mod` and the Makefile select the
   verification toolchain through [GOTOOLCHAIN](https://go.dev/doc/toolchain).
 - GNU Make 4.3 and a POSIX shell with `sed`.
-- For integration tests: Python 3.10+ to launch the harness, Docker with a Linux
+- For integration tests: Python 3.10+ to launch the harness, Docker Compose v2 with a Linux
   daemon, and access to Docker Hub/PyPI. Tests themselves run on Python 3.13.12
   and PostgreSQL 18.3; image digests and Python dependencies are pinned in
-  [the launcher](scripts/test_python.py) and [requirements](tests/requirements.txt).
+  [docker-compose.test.yml](docker-compose.test.yml) and [requirements](tests/requirements.txt).
 
 ## Development commands
 
@@ -24,17 +24,19 @@ make coverage   # local Go race and coverage reports
 make test-python # isolated PostgreSQL integration and failure suites
 ```
 
-`make test-python` builds the Go application and a test-only probe, installs
-pinned dependencies in a disposable Python container, and creates a private
-PostgreSQL container/network. It copies only test files and binaries, publishes
-no ports, uses no existing database, and removes only resources labelled for
-that invocation on success, failure or interruption. Database authentication is
-generated per run and passed through process environments, never command arguments
-or committed fixture values. No database URL is accepted
-by the launcher. Each test gets a unique database, removed by its fixture.
-Prerequisite, test and cleanup failures return a nonzero exit status.
-A forcibly killed launcher cannot clean up; its `taskmanager-test-<uuid>` labels
-identify the specific resources to inspect and remove.
+`make test-python` builds the Go application and test probe, then uses
+[docker-compose.test.yml](docker-compose.test.yml) for PostgreSQL, the Python
+runner, health checks and networking. Each invocation has a unique Compose project.
+The launcher copies test artifacts with `compose cp` so remote daemons need no
+checkout bind mount. The test runner waits for PostgreSQL health, and its exit
+code determines the command result. `compose down --volumes` runs on success,
+failure or interruption and removes only that invocation's project resources.
+
+Authentication is generated per run and passed through process environments,
+never command arguments or committed values. The launcher accepts no database URL,
+publishes no ports, and each test uses its own disposable database. Missing
+prerequisites and failed cleanup fail the command. After a forced kill, inspect
+the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
 
 ## Database commands
 

@@ -68,7 +68,8 @@ Require `DATABASE_URL` and bound database commands with `DATABASE_TIMEOUT`.
 Use the pgx `database/sql` driver and Goose for versioned embedded migrations.
 Keep applied migrations immutable; each transactional migration and its version
 commit together under Goose’s session lock. Test credentials must be generated
-at runtime, never stored in source, examples or PR text.
+at runtime, never stored in source, examples or PR text. Define integration
+services in `docker-compose.test.yml` and isolate each run by Compose project.
 Sample production time through `orchestrator.database_now()` after locks.
 Only isolated Python fixtures may replace that function; production configuration
 must not expose fake-clock controls.

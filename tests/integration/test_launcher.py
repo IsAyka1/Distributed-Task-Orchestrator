@@ -6,72 +6,73 @@ import pytest
 
 
 @dataclass
-class DockerFake:
-    fail_cleanup: str = ""
-    run_id: str = ""
+class ComposeFake:
+    failure: str = ""
+    interrupt: bool = False
     calls: list[tuple[str, ...]] = field(default_factory=list)
-    build_arches: list[str] = field(default_factory=list)
-    failed: bool = False
-    runtime_credential: str = field(default="", repr=False)
+    runtime_values: list[str] = field(default_factory=list, repr=False)
 
     def run(self, args, **options):
         args = tuple(args)
         self.calls.append(args)
         output = ""
         if args[:2] == ("docker", "info"):
-            output = "linux/aarch64"
-        elif args[:2] == ("docker", "run"):
-            self.runtime_credential = options["env"]["POSTGRES_PASSWORD"]
-        elif args[:2] == ("docker", "create"):
-            if options["env"]["TEST_DATABASE_PASSWORD"] != self.runtime_credential:
-                pytest.fail("test containers received inconsistent runtime configuration")
-        elif args[:2] == ("go", "build"):
-            self.build_arches.append(options["env"]["GOARCH"])
-        elif args[:3] == ("docker", "network", "create"):
-            self.run_id = args[-1]
-        elif args[:2] == ("docker", "start") and self.fail_cleanup:
-            raise subprocess.CalledProcessError(1, args)
-        elif args[:2] == ("docker", "inspect"):
-            output = "0"
-        elif len(args) > 2 and args[0] == "docker" and args[2] in ("inspect", "rm"):
-            if args[2] == self.fail_cleanup and not self.failed:
-                self.failed = True
-                raise subprocess.TimeoutExpired(args, 15)
-            if args[2] == "inspect":
-                output = self.run_id
+            output = "linux/amd64"
+        elif args[:2] == ("docker", "compose"):
+            self.runtime_values.append(options["env"]["TEST_DATABASE_PASSWORD"])
+            if "up" in args and self.interrupt:
+                raise KeyboardInterrupt
+            if self.failure and self.failure in args:
+                raise subprocess.CalledProcessError(1, args)
         return subprocess.CompletedProcess(args, 0, stdout=output, stderr="")
+
+    def compose_calls(self):
+        return [args for args in self.calls if args[:2] == ("docker", "compose")]
 
 
 @pytest.fixture
-def docker_fake(monkeypatch):
-    fake = DockerFake()
+def compose_fake(monkeypatch):
+    fake = ComposeFake()
     monkeypatch.setattr(launcher.subprocess, "run", fake.run)
     monkeypatch.setattr(launcher.signal, "signal", lambda *args: None)
     return fake
 
 
-def test_launcher_targets_daemon_architecture(docker_fake):
+def test_launcher_uses_compose(compose_fake):
     launcher.main()
-    assert docker_fake.build_arches == ["arm64", "arm64"]
-    containers = [args for args in docker_fake.calls if args[:2] in [("docker", "run"), ("docker", "create")]]
-    assert len(containers) == 2
-    for args in containers:
-        assert args[args.index("--platform") + 1] == "linux/arm64"
+    calls = compose_fake.compose_calls()
+    assert any("--exit-code-from" in args and "tests" in args for args in calls)
+    assert any("docker-compose.test.yml" in args[args.index("-f") + 1] for args in calls)
+    assert not any(args[:2] in [("docker", "run"), ("docker", "create"), ("docker", "network"), ("docker", "rm")] for args in compose_fake.calls)
 
 
-@pytest.mark.parametrize("operation", ["inspect", "rm"])
-def test_cleanup_attempts_remaining_resources_after_timeout(docker_fake, operation):
-    docker_fake.fail_cleanup = operation
-    with pytest.raises(RuntimeError, match="test cleanup failed"):
+@pytest.mark.parametrize("operation", ["create", "cp", "up", "down"])
+def test_compose_errors_fail_and_attempt_cleanup(compose_fake, operation):
+    compose_fake.failure = operation
+    with pytest.raises(subprocess.CalledProcessError):
         launcher.main()
-    removals = [args for args in docker_fake.calls if args[:3] in [("docker", "container", "rm"), ("docker", "network", "rm")]]
-    assert any(args[-1] == docker_fake.run_id + "-db" for args in removals)
-    assert any(args[-1] == docker_fake.run_id for args in removals)
+    assert "down" in compose_fake.compose_calls()[-1]
+    assert "--volumes" in compose_fake.compose_calls()[-1]
 
 
-def test_launcher_keeps_runtime_configuration_out_of_arguments(docker_fake):
-    launcher.main()
-    if not docker_fake.runtime_credential:
-        pytest.fail("test runtime configuration was not generated")
-    if any(docker_fake.runtime_credential in part for args in docker_fake.calls for part in args):
-        pytest.fail("test runtime configuration was exposed in command arguments")
+def test_compose_interruption_cleans_up(compose_fake):
+    compose_fake.interrupt = True
+    with pytest.raises(KeyboardInterrupt):
+        launcher.main()
+    assert "down" in compose_fake.compose_calls()[-1]
+
+
+def test_compose_projects_are_isolated_and_runtime_values_stay_out_of_arguments(compose_fake):
+    projects = []
+    for _ in range(2):
+        compose_fake.calls.clear()
+        launcher.main()
+        calls = compose_fake.compose_calls()
+        names = {args[args.index("--project-name") + 1] for args in calls}
+        assert len(names) == 1
+        projects.extend(names)
+        if any(value in part for value in compose_fake.runtime_values for args in compose_fake.calls for part in args):
+            pytest.fail("runtime configuration was exposed in command arguments")
+    assert projects[0] != projects[1]
+    if not compose_fake.runtime_values:
+        pytest.fail("runtime configuration was not generated")

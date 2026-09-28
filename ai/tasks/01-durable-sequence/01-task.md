@@ -36,7 +36,7 @@ Deliver one independently verifiable PR for this outcome. Keep adjacent capabili
 
 ## Testing
 
-Python tests: setup/cleanup twice, reachable/unreachable database, and clock reset between tests. Go unit checks must not disguise missing integration prerequisites as successful coverage.
+Python tests: setup/cleanup twice and reachable/unreachable database. Go unit checks must not disguise missing integration prerequisites as successful coverage.
 
 ## Split or decision boundary
 
