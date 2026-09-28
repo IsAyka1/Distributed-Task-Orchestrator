@@ -68,6 +68,10 @@ Bind `$2` to authoritative database time sampled after acquiring the workflow lo
 
 ## Workflow reevaluation
 
+Pure evaluation rejects inconsistent task snapshots before proposing changes.
+Terminal runs need no task inspection to consume redundant wakeups; their stored
+result and timestamps must remain unchanged.
+
 Update a task and execute `INSERT workflow_wakeups ... ON CONFLICT DO NOTHING` in one transaction. Every writer locks workflow → wakeup (if present) → tasks by ID → attempts by ID, using READ COMMITTED and one workflow per transaction. Discovery reads do not lock wakeups or tasks first. The engine locks the workflow before its wakeup, rereads tasks, evaluates, and deletes the signal atomically. Completion either commits before evaluation sees it or waits and recreates the signal after evaluation commits. Missing wakeup rows are protected by the workflow lock. Claims and heartbeats follow the same order; no external call occurs inside the transaction.
 
 Whenever the data model or a contract changes, update the affected reference documents and `AGENTS.md` in the same PR.

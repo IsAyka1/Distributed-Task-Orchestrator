@@ -57,3 +57,7 @@ Construct immutable definitions through `workflow.NewDefinition`; retain no call
 ## Task transition boundary
 
 Treat `task.Transition` results as proposals: callers must enforce eligibility and fencing before persisting them atomically with wakeups.
+
+## Sequential evaluation boundary
+
+Evaluate a complete, consistent snapshot under the workflow lock. Terminal wakeups are no-ops; persist proposed activations with input propagation, timestamps and revision changes in the same transaction.
