@@ -77,3 +77,14 @@ Update a task and execute `INSERT workflow_wakeups ... ON CONFLICT DO NOTHING` i
 Whenever the data model or a contract changes, update the affected reference documents and `AGENTS.md` in the same PR.
 
 See the [roadmap](04-roadmap.md) and [implementation tasks](../tasks/README.md).
+
+## Migration and database-time boundary
+
+Goose owns `goose_db_version` and a PostgreSQL session advisory lock. Each
+transactional migration commits with its version; a failure preserves earlier
+successful versions and rolls back the failing version. Applied migrations remain
+immutable by policy (Goose does not checksum their content). Do not use explicit
+transaction control or nontransactional migration annotations.
+`orchestrator.database_now()` samples `clock_timestamp()` in production after
+application locks are acquired. Test fixtures replace it only in a disposable
+test database before the scenario, aligned with application time.

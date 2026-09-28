@@ -2,66 +2,79 @@
 
 A distributed task orchestrator built with Go and PostgreSQL.
 
-The current executable is a bootstrap entry point: it exits successfully without
-starting services. Workflow execution and database support follow in later tasks.
+The executable currently supports database connectivity checks and migrations;
+workflow services follow in later tasks.
 
 ## Prerequisites
 
-- [Go 1.27.1](https://go.dev/dl/) on `PATH`; `go.mod` pins the verification
-  toolchain. The Makefile selects that exact version through
-  [GOTOOLCHAIN](https://go.dev/doc/toolchain). An older Go launcher may download it
-  on first use; install it beforehand for offline checks.
-- GNU Make 4.3 and a POSIX shell with `sed` for the convenience commands below.
-  Formatting and testing use Go's bundled tools; there are no third-party Go dependencies.
-- PostgreSQL and Python are not required for this bootstrap. Their versions and
-  integration commands will be pinned with the harness in
-  [task 01-01](ai/tasks/01-durable-sequence/01-task.md).
+- [Go 1.27.1](https://go.dev/dl/) on `PATH`; `go.mod` and the Makefile select the
+  verification toolchain through [GOTOOLCHAIN](https://go.dev/doc/toolchain).
+- GNU Make 4.3 and a POSIX shell with `sed`.
+- For integration tests: Python 3.10+ to launch the harness, Docker Compose v2 with a Linux
+  daemon, and access to Docker Hub/PyPI. Tests themselves run on Python 3.13.12
+  and PostgreSQL 18.3; image digests and Python dependencies are pinned in
+  [docker-compose.test.yml](docker-compose.test.yml) and [requirements](tests/requirements.txt).
 
 ## Development commands
 
-Run from the repository root:
-
 ```sh
-make fmt        # apply gofmt
-make check-fmt  # fail on unformatted Go files without changing them
-make vet        # run Go static analysis
-make build      # build bin/orchestrator
-make test       # run all Go unit tests
-make check      # formatting, static analysis, build, and unit tests
-make coverage   # run all Go tests with race detection and coverage reports
-./bin/orchestrator
+make fmt        # format Go
+make check      # formatting, vet, build, Go unit tests
+make coverage   # local Go race and coverage reports
+make test-python # isolated PostgreSQL integration and failure suites
 ```
 
-`go test` runs the pure definition validation and immutability tests in
-`internal/workflow`; the bootstrap command has no unit test cases.
-With Go 1.27.1 installed, the task's direct verification commands also work:
+`make test-python` builds the Go application and test probe, then uses
+[docker-compose.test.yml](docker-compose.test.yml) for PostgreSQL, the Python
+runner, health checks and networking. Each invocation has a unique Compose project.
+The launcher copies test artifacts with `compose cp` so remote daemons need no
+checkout bind mount. The test runner waits for PostgreSQL health, and its exit
+code determines the command result. `compose down --volumes` runs on success,
+failure or interruption and removes only that invocation's project resources.
+
+Authentication is generated per run and passed through process environments,
+never command arguments or committed values. The launcher accepts no database URL,
+publishes no ports, and each test uses its own disposable database. Missing
+prerequisites and failed cleanup fail the command. After a forced kill, inspect
+the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
+
+## Database commands
+
+Set `DATABASE_URL` to a PostgreSQL connection string with the desired TLS policy.
+`DATABASE_TIMEOUT` bounds connection and migration work (default `10s`, maximum `1m`).
+The pgx `database/sql` driver owns connection parsing and pooling. Supply runtime
+configuration through your environment or secret manager; never commit it.
+Driver errors are redacted by the CLI.
 
 ```sh
-go build ./cmd/orchestrator
-go test ./...
-gofmt -l .      # must print nothing
+make build
+./bin/orchestrator db-check
+./bin/orchestrator migrate
 ```
 
-## Continuous integration
+Choose the TLS policy in your runtime connection configuration. Embedded Goose
+migrations use `NNNN_name.sql` and `-- +goose Up` / `-- +goose Down` sections.
+Goose records versions in `goose_db_version`, holds a PostgreSQL session advisory
+lock and commits each migration independently. A failing migration rolls back;
+previously completed versions remain applied. Applied files must not be edited;
+Goose tracks versions rather than content checksums. Do not use nontransactional
+migrations or explicit transaction control. Domain tables begin in task 01-02.
+Migration cleanup has a separate one-second timeout after command cancellation.
 
-[CI](.github/workflows/ci.yml) builds, checks Go style, and runs tests with race
-detection on pull requests and pushes to `main`. Coverage percentages appear in
-the test logs. Run `make coverage` locally for coverage reports.
+## Test conventions and CI
 
-## Test conventions
+[CI](.github/workflows/ci.yml) builds, checks formatting/static analysis and runs
+Go race tests plus both Python suites. Coverage percentages remain in logs;
+`make coverage` produces optional local reports.
 
-Before constructing any time-dependent component, create a fresh reusable fake
-clock with a fixed UTC instant and explicitly configured timers/tickers. Inject it
-into the component, advance it explicitly, and use deterministic jitter. Pure
-functions may take an explicit instant. Never use real sleeps to prove behavior.
-Introduce clock interfaces and shared fakes with the first actual consumer; use
-named, typed fixtures with per-test setup/reset rather than duplicated test doubles.
-
-Python integration and failure tests will use real isolated PostgreSQL, shared
-fixtures, and barriers for races. Configure application and database time together
-before temporal scenarios and reset both between tests. Production lease decisions
-use database time; test clock controls must remain inaccessible in production.
-See the [test-support contract](ai/references/02-code-structure.md#time-and-reusable-test-support).
+Configure fake time before constructing time-dependent components. The shared
+Python `clock` fixture fixes application time and replaces the database-time
+function only inside its isolated test database. Advance it explicitly; each
+scenario starts fresh. Production uses `clock_timestamp()` through
+`orchestrator.database_now()` and exposes no clock override flag or environment
+variable. Add timer/ticker fakes with their first business consumer. Startup
+polling and process timeouts bound infrastructure; they do not prove business
+outcomes. See the [test-support contract](ai/references/02-code-structure.md#time-and-reusable-test-support).
 
 ## Project documentation
 

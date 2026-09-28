@@ -1,0 +1,32 @@
+services:
+  database:
+    image: postgres:18.3-bookworm@sha256:80630f83606d8db77d30b3851b16a9f78be2d0d4dda6f7b82a1fdca5ebe3acba
+    platform: ${TEST_PLATFORM:?Run make test-python to configure the test platform}
+    environment:
+      POSTGRES_PASSWORD: ${TEST_DATABASE_PASSWORD:?Run make test-python to generate test authentication}
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d postgres]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 5s
+
+  tests:
+    image: python:3.13.12-slim-bookworm@sha256:a58daefb915e1e03ad48f3ca4df8832065412c5c35cacb9d39f4229184de12b6
+    platform: ${TEST_PLATFORM:?Run make test-python to configure the test platform}
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      TEST_DATABASE_PASSWORD: ${TEST_DATABASE_PASSWORD:?Run make test-python to generate test authentication}
+    working_dir: /workspace
+    command:
+      - sh
+      - -ec
+      - >-
+        pip install --disable-pip-version-check --no-cache-dir -r tests/requirements.txt &&
+        python -m pytest -p no:cacheprovider -v tests/integration tests/failure
+    stop_grace_period: 5s

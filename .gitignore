@@ -6,3 +6,6 @@ Thumbs.db
 /bin/
 /orchestrator
 /coverage/
+
+__pycache__/
+.pytest_cache/
