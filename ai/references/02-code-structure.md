@@ -91,3 +91,18 @@ Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named r
 metadata, policies, dependencies, cycles, and sequence eligibility.
 `Tasks` returns detached copies in declaration order. `ValidateSequence` gates
 execution to a single chain until stage 5.
+
+## Task transition interface
+
+`internal/task` exposes value types `State`, `Attempt`, `Status`, `AttemptStatus`
+and `Event`. `NewState(1)` creates PENDING state with no attempt; other limits
+return `ErrUnsupportedPolicy` until retry support exists.
+`Transition(state, event)` accepts Activate, Claim, Succeed and Fail and returns
+a proposed state. Invalid snapshots or events return the original value and
+`ErrInvalidTransition`; inputs are never mutated. Terminal states reject every
+event, including repeated completion. Task and attempt outcomes change together.
+
+This is a pure state projection, not the persisted runtime record. It performs
+no I/O, reads no time, and contains no IDs or payloads. The engine owns dependency
+eligibility. The application owns workflow eligibility, fencing, timestamps,
+payload propagation and atomic persistence with the reevaluation signal.

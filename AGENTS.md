@@ -52,3 +52,7 @@ Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitio
 ## Definition domain boundary
 
 Construct immutable definitions through `workflow.NewDefinition`; retain no caller-owned slices or policy pointers, and return detached task snapshots. Preserve identity strings exactly. The domain constructor does not enforce nonempty task IDs or activity type; publication boundaries own those field checks. Accept valid DAGs at definition validation, but execution callers must enforce `ValidateSequence` until stage 5. Domain definitions contain content; generated publication UUIDs, timestamps, and tuple uniqueness belong to application/storage.
+
+## Task transition boundary
+
+Use `task.Transition` for baseline task/attempt state changes. Its value snapshot accepts only a one-attempt policy and returns the unchanged snapshot on invalid state or event. `LastAttempt` retains the attempt outcome after closure; it is not `current_attempt_id`. Callers must check dependency/workflow eligibility and lease fencing, and persist the proposal with IDs, timestamps, payloads and wakeup atomically. The pure transition alone does not authorize execution or completion.
