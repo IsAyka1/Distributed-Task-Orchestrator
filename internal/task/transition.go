@@ -57,8 +57,8 @@ func NewState(maxAttemptCount int32) (State, error) {
 // Transition returns a proposal; callers own eligibility, fencing and atomic persistence.
 // On rejection, it returns the original snapshot and ErrInvalidTransition.
 func Transition(state State, event Event) (State, error) {
-	if !state.valid() {
-		return state, ErrInvalidTransition
+	if err := state.Validate(); err != nil {
+		return state, err
 	}
 	next := state
 	switch {
@@ -78,6 +78,13 @@ func Transition(state State, event Event) (State, error) {
 		return state, ErrInvalidTransition
 	}
 	return next, nil
+}
+
+func (s State) Validate() error {
+	if !s.valid() {
+		return ErrInvalidTransition
+	}
+	return nil
 }
 
 func (s State) valid() bool {

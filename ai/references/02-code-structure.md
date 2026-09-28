@@ -97,3 +97,9 @@ execution to a single chain until stage 5.
 [`internal/task`](../../internal/task/transition.go) keeps task and attempt outcomes
 consistent. The engine owns dependency eligibility; the application owns workflow
 guards, fencing and atomic persistence.
+
+## Sequential evaluation
+
+[`internal/engine`](../../internal/engine/evaluate.go) proposes sequence progress.
+Callers supply a complete snapshot under the workflow lock and own payload
+propagation and persistence; evaluation performs no I/O.
