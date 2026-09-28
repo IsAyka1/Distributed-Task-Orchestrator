@@ -91,3 +91,9 @@ Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named r
 metadata, policies, dependencies, cycles, and sequence eligibility.
 `Tasks` returns detached copies in declaration order. `ValidateSequence` gates
 execution to a single chain until stage 5.
+
+## Task transition interface
+
+[`internal/task`](../../internal/task/transition.go) keeps task and attempt outcomes
+consistent. The engine owns dependency eligibility; the application owns workflow
+guards, fencing and atomic persistence.

@@ -45,6 +45,10 @@ Publication validates nonempty case-sensitive identities, positive version, none
 
 Lease expiry closes the active attempt and moves the task to READY/RETRY_WAIT or FAILED according to its finite policy. External event handling defines WAITING transitions in its own stage.
 
+`task.State.LastAttempt` is an outcome snapshot, not `current_attempt_id` or
+stored attempt history. Storage must still clear the active token and lease on
+closure. The one-attempt policy remains in force until stage 4.
+
 ## Task claim
 
 ```sql

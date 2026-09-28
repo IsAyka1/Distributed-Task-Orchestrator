@@ -28,6 +28,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 
 - One PR addresses one task and changes at most **500 lines of business logic**, measured as additions + deletions against its base. Tests and documentation do not count. Count behavior-bearing SQL and migrations as business logic; exclude non-business scaffolding and generated metadata. Aim for 200–400 business-logic lines and split larger changes into independently verifiable tasks.
 - Add comments only for non-obvious intent, constraints, or behavior; avoid restating code or duplicating reference documentation.
+- Keep documentation changes concise: brief summaries and rationale, constraints, or context that readers cannot readily infer from the code. Do not restate types, fields, functions, or control flow; link to the source when details are needed.
 - Write simple Go and format it with `gofmt`. Avoid empty packages, speculative abstractions, and unrelated refactoring. Preserve other contributors' changes.
 - Keep domain and engine logic independent of HTTP, database drivers, and activity implementations. The application layer owns transactions; SQL claim logic belongs only in `storage/postgres`.
 - Pass `context.Context`, handle errors explicitly, bound background work, and stop loops on shutdown. Do not log secrets or arbitrary payloads.
@@ -52,3 +53,7 @@ Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitio
 ## Definition domain boundary
 
 Construct immutable definitions through `workflow.NewDefinition`; retain no caller-owned slices or policy pointers, and return detached task snapshots. Preserve identity strings exactly. The domain constructor does not enforce nonempty task IDs or activity type; publication boundaries own those field checks. Accept valid DAGs at definition validation, but execution callers must enforce `ValidateSequence` until stage 5. Domain definitions contain content; generated publication UUIDs, timestamps, and tuple uniqueness belong to application/storage.
+
+## Task transition boundary
+
+Treat `task.Transition` results as proposals: callers must enforce eligibility and fencing before persisting them atomically with wakeups.
