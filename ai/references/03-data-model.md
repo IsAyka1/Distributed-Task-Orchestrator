@@ -45,17 +45,9 @@ Publication validates nonempty case-sensitive identities, positive version, none
 
 Lease expiry closes the active attempt and moves the task to READY/RETRY_WAIT or FAILED according to its finite policy. External event handling defines WAITING transitions in its own stage.
 
-The baseline pure `task.State` projection uses `MaxAttemptCount = 1`, an
-`AttemptCount` of zero before claim and one afterward, and a `LastAttempt`
-snapshot containing its number and status. Activate changes PENDING to READY
-without creating an attempt. Claim creates RUNNING attempt 1; Succeed and Fail
-close both task and attempt with matching outcomes. Illegal events or inconsistent
-state return `invalid_transition` and the unchanged snapshot.
-`LastAttempt` remains available after closure and is not an active-attempt token
-or a replacement for stored attempt history. Storage must still clear
-`current_attempt_id` and lease fields on closure. These pure proposals do not
-check UUID ownership, time, dependency eligibility or lease validity; application
-and storage operations enforce those guards before committing the proposal.
+`task.State.LastAttempt` is an outcome snapshot, not `current_attempt_id` or
+stored attempt history. Storage must still clear the active token and lease on
+closure. The one-attempt policy remains in force until stage 4.
 
 ## Task claim
 

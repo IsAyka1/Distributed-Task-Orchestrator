@@ -19,10 +19,8 @@ Contract: [MVP decision 0001](../../../docs/decisions/0001-mvp-contract.md).
 
 Add pure PENDING/READY/RUNNING/SUCCEEDED/FAILED transitions and baseline attempt outcomes, with events separate from I/O.
 
-Use a value snapshot with a one-attempt policy, counters and the latest attempt
-outcome. Keep IDs, timestamps, payload propagation, workflow/dependency guards,
-lease fencing and persistence in their designated engine/application/storage
-tasks; the pure transition returns a proposal, not authorization to execute.
+Scope: pure one-attempt transitions; eligibility, fencing and persistence belong
+to later engine/application/storage tasks.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
 
