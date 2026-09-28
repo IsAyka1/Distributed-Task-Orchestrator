@@ -1,5 +1,9 @@
 # 00-05. Evaluate sequential workflows with pure logic
 
+Status: Done
+
+PR: [#7](https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/7)
+
 - Dependency: [00-04](../00-domain/04-task.md) must meet its acceptance criteria.
 - PR size: estimated **150–280 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
 - Sources: [roadmap](../../references/04-roadmap.md), [context](../../references/01-context.md), [code structure](../../references/02-code-structure.md), [data model](../../references/03-data-model.md).
@@ -19,12 +23,12 @@ Deliver one independently verifiable PR for this outcome. Keep adjacent capabili
 
 ## Definition of Done
 
-- [ ] The next task becomes READY only after predecessor success. All successes yield SUCCEEDED; final failure yields FAILED. Terminal runs cannot return to RUNNING.
-- [ ] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
-- [ ] Use reusable mocks and controlled time if needed. Pure evaluation requires neither; report Python integration tests as skipped until the stage-1 harness exists.
-- [ ] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
-- [ ] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
-- [ ] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
+- [x] The next task becomes READY only after predecessor success. All successes yield SUCCEEDED; final failure yields FAILED. Terminal runs cannot return to RUNNING.
+- [x] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
+- [x] Use reusable mocks and controlled time if needed. Pure evaluation requires neither; report Python integration tests as skipped until the stage-1 harness exists.
+- [x] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
+- [x] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
+- [x] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
 
 ## Testing
 
