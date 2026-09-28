@@ -66,11 +66,11 @@ type TaskQueue interface {
 
 GitHub Actions runs build, Go style (`gofmt` and `go vet`), and Go tests with race
 detection and coverage percentages in test logs, without coverage report files
-or uploads. Python tests are explicitly skipped while none exist.
-When adding the Python harness, expose `make test-python` to install its pinned
-dependencies, provision/clean up isolated PostgreSQL, and execute the integration
-and failure suites. Align the workflow's Python version with the harness pin.
-The CI gate must fail if tests exist but the harness command is absent or fails.
+or uploads. `make test-python` runs both Python suites with pinned dependencies
+and disposable PostgreSQL/Python containers; missing prerequisites fail the gate.
+See [development commands](../../README.md#development-commands) for isolation
+and cleanup. Shared fixtures in `tests/conftest.py` provide database lifetimes,
+bounded Go process execution and aligned application/database clock control.
 
 Inject time into time-dependent business logic. Configure reusable fake clocks before constructing the tested component, including its timers and tickers; explicitly advance time in assertions. Inject deterministic randomness for jitter. Pure functions can accept an explicit instant rather than reading a clock.
 
@@ -103,3 +103,11 @@ guards, fencing and atomic persistence.
 [`internal/engine`](../../internal/engine/evaluate.go) proposes sequence progress.
 Callers supply a complete snapshot under the workflow lock and own payload
 propagation and persistence; evaluation performs no I/O.
+
+## Database bootstrap
+
+`config.Load` requires `DATABASE_URL`; `DATABASE_TIMEOUT` bounds `db-check` and
+`migrate` (default 10 seconds, at most one minute). `storage/postgres` owns the
+pgx `database/sql` pool, Goose migration provider and database time query. The production
+CLI embeds migrations and has no test-clock configuration. The separate Go probe
+under `tests/support` is built only for integration scenarios.

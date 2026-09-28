@@ -29,3 +29,7 @@ coverage:
 	go tool cover -func=coverage/go.out > coverage/go.txt
 	go tool cover -html=coverage/go.out -o coverage/go.html
 	cat coverage/go.txt
+
+.PHONY: test-python
+test-python:
+	python3 scripts/test_python.py
