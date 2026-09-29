@@ -1,6 +1,8 @@
 # 01-02. Create definition and workflow-run schema
 
-Status: In progress
+Status: Done
+
+PR: https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/9
 
 - Dependency: [01-01](../01-durable-sequence/01-task.md) must meet its acceptance criteria.
 - PR size: estimated **100–200 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
@@ -19,12 +21,12 @@ Deliver one independently verifiable PR for this outcome. Keep adjacent capabili
 
 ## Definition of Done
 
-- [ ] Each run references one definition version. Publishing v2 leaves v1 unchanged. Constraints follow 00-01.
-- [ ] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
-- [ ] Reusable mocks are used where test doubles are needed. Time is mocked before time-dependent code runs. Integration tests are written in Python against real PostgreSQL.
-- [ ] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
-- [ ] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
-- [ ] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
+- [x] Each run references one definition version. Publishing v2 leaves v1 unchanged. Constraints follow 00-01.
+- [x] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
+- [x] Reusable mocks are used where test doubles are needed. Time is mocked before time-dependent code runs. Integration tests are written in Python against real PostgreSQL.
+- [x] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
+- [x] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.
+- [x] Task changes are committed and pushed on the dedicated branch, and a pull request is open against the intended base with the task reference, verification results, and business-logic line count. The final response includes its URL.
 
 ## Testing
 
