@@ -1,5 +1,7 @@
 # 01-02. Create definition and workflow-run schema
 
+Status: In progress
+
 - Dependency: [01-01](../01-durable-sequence/01-task.md) must meet its acceptance criteria.
 - PR size: estimated **100–200 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
 - Sources: [roadmap](../../references/04-roadmap.md), [context](../../references/01-context.md), [code structure](../../references/02-code-structure.md), [data model](../../references/03-data-model.md).
@@ -7,7 +9,7 @@
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 

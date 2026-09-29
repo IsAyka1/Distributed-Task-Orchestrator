@@ -39,6 +39,12 @@ Publication validates nonempty case-sensitive identities, positive version, none
 
 ## States
 
+The [definition/run migration](../../migrations/0002_workflow_definitions_runs.sql)
+protects published history. Publication still validates definition content and
+graphs; application writers enforce transitions and sample timestamps after
+locking. Its down migration discards stored definitions and runs; production
+recovery requires a forward repair or restoring a backup.
+
 - Workflow: `PENDING → RUNNING → SUCCEEDED | FAILED | CANCELLED | TIMED_OUT`. Each operation defines the terminal outcomes it supports.
 - Task: `PENDING → READY → RUNNING → SUCCEEDED`. Transient failure: `RUNNING → RETRY_WAIT → READY`. Exhausted attempts: `RUNNING → FAILED`. FAILED means a final logical-task failure, not an intermediate retry.
 - Attempt: `RUNNING → SUCCEEDED | FAILED | TIMED_OUT | LOST_LEASE`. Attempt closure and task_run changes are atomic.

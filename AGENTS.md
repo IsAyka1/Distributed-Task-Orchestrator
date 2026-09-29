@@ -73,3 +73,10 @@ services in `docker-compose.test.yml` and isolate each run by Compose project.
 Sample production time through `orchestrator.database_now()` after locks.
 Only isolated Python fixtures may replace that function; production configuration
 must not expose fake-clock controls.
+
+## Definition and run storage boundary
+
+Published definitions are append-only in `orchestrator`; publish another version
+instead of rewriting history. Validate definition content at publication. Run
+status checks admit only baseline states; transition eligibility, revision
+increments and payload propagation remain application responsibilities.

@@ -14,7 +14,9 @@ def test_setup_cleanup_twice(database_factory, cluster):
                 app.migrate()
                 assert app.run("db-check").returncode == 0
                 with database.connect() as conn:
-                    assert conn.execute("SELECT max(version_id) FROM goose_db_version").fetchone() == (1,)
+                    assert conn.execute(
+                        "SELECT to_regclass('orchestrator.workflow_runs')"
+                    ).fetchone() == ("orchestrator.workflow_runs",)
             with cluster.connect() as admin:
                 assert admin.execute("SELECT 1 FROM pg_database WHERE datname=%s", (database.name,)).fetchone() is None
             with survivor.connect() as conn:
