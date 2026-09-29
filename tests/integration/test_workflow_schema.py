@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import json
 from uuid import uuid4
 
@@ -7,37 +6,7 @@ from psycopg.types.json import Jsonb
 import pytest
 
 
-@dataclass(frozen=True)
-class Definition:
-    provider: str = "demo"
-    name: str = "sequence"
-    version: int = 1
-    content: str = '{"tasks":[{"id":"A","type":"activity","depends_on":[]}]}'
-
-    def insert(self, conn):
-        identifier = uuid4()
-        conn.execute(
-            "INSERT INTO orchestrator.workflow_definitions "
-            "(id, provider, name, version, definition) VALUES (%s, %s, %s, %s, %s)",
-            (identifier, self.provider, self.name, self.version, Jsonb(json.loads(self.content))),
-        )
-        return identifier
-
-
-@pytest.fixture
-def connection(application, clock):
-    with application.database.connect() as conn:
-        yield conn
-
-
-def insert_run(conn, definition_id, *, status="PENDING", version=1, payload=None):
-    identifier = uuid4()
-    conn.execute(
-        "INSERT INTO orchestrator.workflow_runs (id, definition_id, status, version, input) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (identifier, definition_id, status, version, Jsonb(payload)),
-    )
-    return identifier
+from support.schema import Definition, insert_run
 
 
 def test_migration_and_repeated_run_preserve_definition_versions(application, connection):

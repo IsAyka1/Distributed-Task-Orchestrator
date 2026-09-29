@@ -42,6 +42,7 @@ def main():
         try:
             compose("create")
             compose("cp", str(ROOT / "tests"), "tests:/workspace/tests")
+            compose("cp", str(ROOT / "migrations"), "tests:/workspace/migrations")
             compose("cp", str(Path(__file__).resolve()), "tests:/workspace/launcher.py")
             compose("cp", build, "tests:/binaries")
             compose("up", "--no-recreate", "--abort-on-container-exit", "--exit-code-from", "tests",

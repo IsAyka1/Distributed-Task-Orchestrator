@@ -16,6 +16,12 @@ The [MVP decision](../../docs/decisions/0001-mvp-contract.md) defines the fields
 
 `current_attempt_id` points to this task's active attempt and is non-null exactly while RUNNING, alongside owner and expiry; clear all three on closure. `attempt_count` starts at zero and increments only with a committed claim/attempt insertion; its new value is `attempt_no`. Definition `max_attempts` (default 1, positive signed 32-bit integer) is copied without conversion to `max_attempt_count`. Stages 1–3 start only policies with limit 1; stage 4 enables larger finite limits.
 
+The [task schema](../../migrations/0003_tasks_attempts_wakeups.sql) uses a composite
+FK for active-attempt ownership: insert the attempt before assigning its token.
+Counters and statuses are restricted to the baseline; later stages must migrate
+those checks. Cross-row execution eligibility and fencing remain application
+responsibilities. Reversing this migration discards execution history and wakeups.
+
 `workflow_runs.version` is a concurrency revision, initially 1, incremented once per committed transaction changing the existing run or its tasks/attempts, including claims/heartbeats. Wakeup-only changes and no-op evaluations do not increment it. It is not the immutable definition version.
 
 Start creates a PENDING run/tasks and a wakeup. Evaluation starts the run and activates its root. Root input equals run input (omitted means JSON null); a successor receives its predecessor's complete output atomically when becoming READY. Inputs stay fixed through retries. Final-step output becomes successful run output; failures leave run output null and unstarted successors PENDING. Status distinguishes unavailable output from successful JSON null.

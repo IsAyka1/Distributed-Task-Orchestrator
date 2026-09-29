@@ -138,3 +138,9 @@ def migration_dir(tmp_path):
             (tmp_path / f"{i:04d}_test.sql").write_text("-- +goose Up\n" + statement)
         return str(tmp_path)
     return write
+
+
+@pytest.fixture
+def connection(application, clock):
+    with application.database.connect() as conn:
+        yield conn
