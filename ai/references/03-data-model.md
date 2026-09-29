@@ -4,7 +4,7 @@
 
 | Table | Purpose | Fields and constraints to define |
 | --- | --- | --- |
-| `workflow_definitions` | Immutable published definition | `id, name, version, provider, definition jsonb, created_at`; `UNIQUE(provider, name, version)` |
+| `workflow_definitions` | Immutable published definition | `id, name, version, provider, definition jsonb, created_at`; `UNIQUE(name, version, provider)` |
 | `workflow_runs` | Execution of a specific definition version | `id, definition_id, status, input, output, version, created_at, started_at, finished_at, deadline_at` |
 | `task_runs` | Logical step | `id, workflow_run_id, task_key, status, input, output, max_attempt_count, attempt_count, available_at, lease_owner, lease_expires_at, current_attempt_id`; `UNIQUE(workflow_run_id, task_key)` |
 | `task_attempts` | One execution attempt | `id, task_run_id, attempt_no, worker_id, status, started_at, heartbeat_at, finished_at, error_type, error_message`; `UNIQUE(task_run_id, attempt_no)` |
@@ -12,7 +12,7 @@
 
 ### Canonical MVP contract
 
-The [MVP decision](../../docs/decisions/0001-mvp-contract.md) defines the fields, states, HTTP errors, and race scenarios before migrations. Definition versions are immutable and unique by `(provider, name, version)`; `(provider, name)` alone is not unique. Empty definitions are invalid. Publication supports valid DAGs; execution accepts only a single complete chain until stage 5.
+The [MVP decision](../../docs/decisions/0001-mvp-contract.md) defines the fields, states, HTTP errors, and race scenarios before migrations. Definition versions are immutable and unique by `(name, version, provider)`; `(provider, name)` alone is not unique. Empty definitions are invalid. Publication supports valid DAGs; execution accepts only a single complete chain until stage 5.
 
 `current_attempt_id` points to this task's active attempt and is non-null exactly while RUNNING, alongside owner and expiry; clear all three on closure. `attempt_count` starts at zero and increments only with a committed claim/attempt insertion; its new value is `attempt_no`. Definition `max_attempts` (default 1, positive signed 32-bit integer) is copied without conversion to `max_attempt_count`. Stages 1–3 start only policies with limit 1; stage 4 enables larger finite limits.
 
@@ -38,6 +38,12 @@ Start creates a PENDING run/tasks and a wakeup. Evaluation starts the run and ac
 Publication validates nonempty case-sensitive identities, positive version, nonempty tasks, activity type, unique task IDs, unique existing dependencies, no self-dependencies, and acyclicity across all components. The publication boundary owns the nonempty task-ID and activity-type checks; the domain constructor does not enforce them. The pure domain constructor snapshots all mutable task data and exposes detached copies; default max_attempts is resolved to 1 without retaining the input policy pointer. Retry and timeout policies belong to the immutable definition version; changing the definition requires a new version.
 
 ## States
+
+The [definition/run migration](../../migrations/0002_workflow_definitions_runs.sql)
+protects published history. Publication still validates definition content and
+graphs; application writers enforce transitions and sample timestamps after
+locking. Its down migration discards stored definitions and runs; production
+recovery requires a forward repair or restoring a backup.
 
 - Workflow: `PENDING → RUNNING → SUCCEEDED | FAILED | CANCELLED | TIMED_OUT`. Each operation defines the terminal outcomes it supports.
 - Task: `PENDING → READY → RUNNING → SUCCEEDED`. Transient failure: `RUNNING → RETRY_WAIT → READY`. Exhausted attempts: `RUNNING → FAILED`. FAILED means a final logical-task failure, not an intermediate retry.
