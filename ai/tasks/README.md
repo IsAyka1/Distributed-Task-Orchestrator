@@ -18,7 +18,7 @@ Follow `00 → 01 → … → 10` and each stage's task order. This is a conserv
 | Stage | PR tasks | Observable outcome |
 | --- | --- | --- |
 | [0. Domain](00-domain/README.md) | 5 | Pure domain logic validates definitions, transitions, and sequential workflow outcomes. |
-| [1. Durable sequence](01-durable-sequence/README.md) | 12 | A single process executes A → B → C through PostgreSQL and resumes from committed progress after restart. |
+| [1. Durable sequence](01-durable-sequence/README.md) | 13 | A single process executes A → B → C through PostgreSQL and resumes from committed progress after restart. |
 | [2. Multi-worker](02-multi-worker/README.md) | 3 | Multiple processes share the queue without two valid attempts for one task. |
 | [3. Lease/recovery](03-lease-recovery/README.md) | 4 | Work recovers after a worker crash, and stale attempts cannot persist results. |
 | [4. Retry](04-retry/README.md) | 6 | Bounded retries preserve complete history and end in success or FAILED. |

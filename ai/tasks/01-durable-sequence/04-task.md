@@ -1,13 +1,13 @@
 # 01-04. Persist and read immutable definitions
 
-- Dependency: [01-03](../01-durable-sequence/03-task.md) must meet its acceptance criteria.
+- Dependency: [01-03a](03a-task.md) must meet its acceptance criteria.
 - PR size: estimated **140–260 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
 - Sources: [roadmap](../../references/04-roadmap.md), [context](../../references/01-context.md), [code structure](../../references/02-code-structure.md), [data model](../../references/03-data-model.md).
 - Shared requirements: [execution rules](../README.md#execution-rules).
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 

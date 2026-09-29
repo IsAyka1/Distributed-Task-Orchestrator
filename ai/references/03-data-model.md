@@ -18,9 +18,11 @@ The [MVP decision](../../docs/decisions/0001-mvp-contract.md) defines the fields
 
 The [task schema](../../migrations/0003_tasks_attempts_wakeups.sql) uses a composite
 FK for active-attempt ownership: insert the attempt before assigning its token.
-Counters and statuses are restricted to the baseline; later stages must migrate
-those checks. Cross-row execution eligibility and fencing remain application
-responsibilities. Reversing this migration discards execution history and wakeups.
+Counters are restricted to the baseline; larger budgets require a migration.
+Enum values are defined and validated in Go, not SQL enum types or allowed-value
+CHECK lists. Status columns remain text; lease consistency and relational
+integrity stay in SQL. Cross-row execution eligibility and fencing remain
+application responsibilities. Reversing this migration discards execution history and wakeups.
 
 `workflow_runs.version` is a concurrency revision, initially 1, incremented once per committed transaction changing the existing run or its tasks/attempts, including claims/heartbeats. Wakeup-only changes and no-op evaluations do not increment it. It is not the immutable definition version.
 
@@ -44,6 +46,10 @@ Start creates a PENDING run/tasks and a wakeup. Evaluation starts the run and ac
 Publication validates nonempty case-sensitive identities, positive version, nonempty tasks, activity type, unique task IDs, unique existing dependencies, no self-dependencies, and acyclicity across all components. The publication boundary owns the nonempty task-ID and activity-type checks; the domain constructor does not enforce them. The pure domain constructor snapshots all mutable task data and exposes detached copies; default max_attempts is resolved to 1 without retaining the input policy pointer. Retry and timeout policies belong to the immutable definition version; changing the definition requires a new version.
 
 ## States
+
+The [status migration](../../migrations/0004_status_enums_in_code.sql) removes
+allowed-value checks without rewriting stored rows. Rolling it back requires all
+stored statuses to fit the old baseline; rollback rejects incompatible rows.
 
 The [definition/run migration](../../migrations/0002_workflow_definitions_runs.sql)
 protects published history. Publication still validates definition content and

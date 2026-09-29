@@ -69,10 +69,12 @@ def test_run_requires_an_existing_definition(connection):
 
 
 @pytest.mark.parametrize("status", ["", "running", "UNKNOWN", "CANCELLED", "TIMED_OUT"])
-def test_unsupported_run_status(connection, status):
+def test_run_status_values_belong_to_application(connection, status):
     definition_id = Definition().insert(connection)
-    with pytest.raises(psycopg.errors.CheckViolation):
-        insert_run(connection, definition_id, status=status)
+    run_id = insert_run(connection, definition_id, status=status)
+    assert connection.execute(
+        "SELECT status FROM orchestrator.workflow_runs WHERE id=%s", (run_id,),
+    ).fetchone() == (status,)
 
 
 @pytest.mark.parametrize("version", [0, -1])
