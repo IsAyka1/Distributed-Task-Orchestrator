@@ -6,7 +6,7 @@ CREATE TABLE orchestrator.workflow_definitions (
     version bigint NOT NULL CHECK (version > 0),
     definition jsonb NOT NULL CHECK (jsonb_typeof(definition) = 'object'),
     created_at timestamptz NOT NULL DEFAULT orchestrator.database_now(),
-    CONSTRAINT workflow_definitions_identity UNIQUE (provider, name, version)
+    CONSTRAINT workflow_definitions_identity UNIQUE (name, version, provider)
 );
 
 -- +goose StatementBegin

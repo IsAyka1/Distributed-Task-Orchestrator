@@ -55,6 +55,10 @@ def test_migration_and_repeated_run_preserve_definition_versions(application, co
 
 
 def test_definition_identity_is_provider_scoped_and_exact(connection):
+    assert connection.execute(
+        "SELECT pg_get_indexdef('orchestrator.workflow_definitions_identity'::regclass, n, true) "
+        "FROM generate_series(1, 3) AS n ORDER BY n"
+    ).fetchall() == [("name",), ("version",), ("provider",)]
     Definition().insert(connection)
     with pytest.raises(psycopg.errors.UniqueViolation):
         Definition().insert(connection)

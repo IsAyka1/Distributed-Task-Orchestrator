@@ -48,7 +48,7 @@ Use maps only for genuinely dynamic key-value collections, not as substitutes fo
 
 ## MVP execution contract
 
-Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitions are unique by `(provider, name, version)`; `max_attempts` maps directly to `max_attempt_count`; `current_attempt_id` identifies only the active attempt. The run `version` is a concurrency revision, not a definition version. Every execution-state writer locks workflow → wakeup → tasks → attempts; sample lease time after locks and commit before external calls. Stage 1 includes attempts, leases, and fenced completion with a one-attempt limit.
+Follow [decision 0001](docs/decisions/0001-mvp-contract.md): immutable definitions are unique by `(name, version, provider)`; `max_attempts` maps directly to `max_attempt_count`; `current_attempt_id` identifies only the active attempt. The run `version` is a concurrency revision, not a definition version. Every execution-state writer locks workflow → wakeup → tasks → attempts; sample lease time after locks and commit before external calls. Stage 1 includes attempts, leases, and fenced completion with a one-attempt limit.
 
 ## Definition domain boundary
 
