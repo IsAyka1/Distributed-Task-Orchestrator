@@ -18,9 +18,11 @@ The [MVP decision](../../docs/decisions/0001-mvp-contract.md) defines the fields
 
 The [task schema](../../migrations/0003_tasks_attempts_wakeups.sql) uses a composite
 FK for active-attempt ownership: insert the attempt before assigning its token.
-Counters and statuses are restricted to the baseline; later stages must migrate
-those checks. Cross-row execution eligibility and fencing remain application
-responsibilities. Reversing this migration discards execution history and wakeups.
+Counters are restricted to the baseline; larger budgets require a migration.
+Enum values are defined and validated in Go, not SQL enum types or allowed-value
+CHECK lists. Status columns remain text; lease consistency and relational
+integrity stay in SQL. Cross-row execution eligibility and fencing remain
+application responsibilities. Reversing this migration discards execution history and wakeups.
 
 `workflow_runs.version` is a concurrency revision, initially 1, incremented once per committed transaction changing the existing run or its tasks/attempts, including claims/heartbeats. Wakeup-only changes and no-op evaluations do not increment it. It is not the immutable definition version.
 

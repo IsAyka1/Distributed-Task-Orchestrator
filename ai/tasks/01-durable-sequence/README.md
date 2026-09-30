@@ -11,6 +11,7 @@ Follow the order below; each task depends on the previous one. One task maps to 
 | [01-01](01-task.md) | Add PostgreSQL configuration and a Python integration harness | 80–200 |
 | [01-02](02-task.md) | Create definition and workflow-run schema | 100–200 |
 | [01-03](03-task.md) | Create tasks, attempts, and wakeup schema | 120–230 |
+| [01-03a](03a-task.md) | Keep status enums in Go and simplify initial SQL | 5–15 |
 | [01-04](04-task.md) | Persist and read immutable definitions | 140–260 |
 | [01-05](05-task.md) | Start workflows and materialize tasks atomically | 160–300 |
 | [01-06](06-task.md) | Apply engine evaluation through durable wakeups | 180–330 |

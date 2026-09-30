@@ -29,11 +29,11 @@ class TaskRows:
         )
         return identifier
 
-    def attempt(self, task_id, *, number=1, status="RUNNING", worker="worker"):
+    def attempt(self, task_id, *, number=1, worker="worker"):
         identifier = uuid4()
         self.conn.execute(
-            "INSERT INTO orchestrator.task_attempts (id, task_run_id, attempt_no, status, worker_id) "
-            "VALUES (%s, %s, %s, %s, %s)", (identifier, task_id, number, status, worker),
+            "INSERT INTO orchestrator.task_attempts (id, task_run_id, attempt_no, worker_id) "
+            "VALUES (%s, %s, %s, %s)", (identifier, task_id, number, worker),
         )
         return identifier
 
@@ -73,10 +73,9 @@ def test_single_attempt_budget(rows, limit, count):
         rows.task(limit=limit, count=count)
 
 
-@pytest.mark.parametrize("key,status", [("", "PENDING"), ("A", "RETRY_WAIT"), ("A", "unknown")])
-def test_task_key_and_status(rows, key, status):
+def test_task_key_is_nonempty(rows):
     with pytest.raises(psycopg.errors.CheckViolation):
-        rows.task(key, status=status)
+        rows.task("")
 
 
 def test_attempt_identity_and_parent(rows):
@@ -89,14 +88,11 @@ def test_attempt_identity_and_parent(rows):
         rows.attempt(uuid4())
 
 
-@pytest.mark.parametrize("number,status,worker", [
-    (0, "RUNNING", "worker"), (-1, "RUNNING", "worker"), (2, "RUNNING", "worker"),
-    (1, "PENDING", "worker"), (1, "LOST_LEASE", "worker"), (1, "RUNNING", ""),
-])
-def test_attempt_validation(rows, number, status, worker):
+@pytest.mark.parametrize("number,worker", [(0, "worker"), (-1, "worker"), (2, "worker"), (1, "")])
+def test_attempt_validation(rows, number, worker):
     task_id = rows.task()
     with pytest.raises(psycopg.errors.CheckViolation):
-        rows.attempt(task_id, number=number, status=status, worker=worker)
+        rows.attempt(task_id, number=number, worker=worker)
 
 
 def test_active_attempt_must_belong_to_task(rows):

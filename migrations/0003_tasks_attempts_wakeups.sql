@@ -3,8 +3,7 @@ CREATE TABLE orchestrator.task_runs (
     id uuid PRIMARY KEY,
     workflow_run_id uuid NOT NULL REFERENCES orchestrator.workflow_runs(id),
     task_key text COLLATE "C" NOT NULL CHECK (task_key <> ''),
-    status text NOT NULL DEFAULT 'PENDING'
-        CHECK (status IN ('PENDING', 'READY', 'RUNNING', 'SUCCEEDED', 'FAILED')),
+    status text NOT NULL DEFAULT 'PENDING',
     input jsonb NOT NULL DEFAULT 'null'::jsonb,
     output jsonb NOT NULL DEFAULT 'null'::jsonb,
     max_attempt_count integer NOT NULL DEFAULT 1
@@ -34,8 +33,7 @@ CREATE TABLE orchestrator.task_attempts (
     attempt_no integer NOT NULL
         CONSTRAINT task_attempts_single_attempt CHECK (attempt_no = 1),
     worker_id text NOT NULL CHECK (worker_id <> ''),
-    status text NOT NULL DEFAULT 'RUNNING'
-        CHECK (status IN ('RUNNING', 'SUCCEEDED', 'FAILED')),
+    status text NOT NULL DEFAULT 'RUNNING',
     started_at timestamptz NOT NULL DEFAULT orchestrator.database_now(),
     heartbeat_at timestamptz NOT NULL DEFAULT orchestrator.database_now(),
     finished_at timestamptz,

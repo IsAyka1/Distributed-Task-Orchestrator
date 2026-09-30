@@ -68,13 +68,6 @@ def test_run_requires_an_existing_definition(connection):
         insert_run(connection, None)
 
 
-@pytest.mark.parametrize("status", ["", "running", "UNKNOWN", "CANCELLED", "TIMED_OUT"])
-def test_unsupported_run_status(connection, status):
-    definition_id = Definition().insert(connection)
-    with pytest.raises(psycopg.errors.CheckViolation):
-        insert_run(connection, definition_id, status=status)
-
-
 @pytest.mark.parametrize("version", [0, -1])
 def test_run_revision_must_be_positive(connection, version):
     definition_id = Definition().insert(connection)
@@ -96,7 +89,7 @@ def test_json_payload_round_trip(connection, payload):
     ).fetchone() == (payload, payload, 2)
 
 
-def test_run_defaults_and_baseline_states(connection):
+def test_run_defaults(connection):
     definition_id = Definition(version=7).insert(connection)
     run = uuid4()
     connection.execute("INSERT INTO orchestrator.workflow_runs (id, definition_id) VALUES (%s, %s)",
@@ -105,8 +98,6 @@ def test_run_defaults_and_baseline_states(connection):
         "SELECT status, version, input, output, input IS NULL, output IS NULL "
         "FROM orchestrator.workflow_runs WHERE id=%s", (run,),
     ).fetchone() == ("PENDING", 1, None, None, False, False)
-    for status in ["RUNNING", "SUCCEEDED", "FAILED"]:
-        insert_run(connection, definition_id, status=status)
 
 
 @pytest.mark.parametrize("column", ["input", "output", "status", "version"])

@@ -24,6 +24,8 @@ Define fields and their types, and use these structures in function parameters, 
 
 Use maps only for genuinely dynamic key-value collections, not as substitutes for structures with known fields.
 
+Define enums as named Go types and constants; validate allowed values in application/domain code. Store them as plain SQL values without PostgreSQL enum types or allowed-value CHECK lists. Keep relational integrity constraints, including lease consistency, in the schema.
+
 ## Code and PR scope
 
 - One PR addresses one task and changes at most **500 lines of business logic**, measured as additions + deletions against its base. Tests and documentation do not count. Count behavior-bearing SQL and migrations as business logic; exclude non-business scaffolding and generated metadata. Aim for 200–400 business-logic lines and split larger changes into independently verifiable tasks.
@@ -77,14 +79,14 @@ must not expose fake-clock controls.
 ## Definition and run storage boundary
 
 Published definitions are append-only in `orchestrator`; publish another version
-instead of rewriting history. Validate definition content at publication. Run
-status checks admit only baseline states; transition eligibility, revision
-increments and payload propagation remain application responsibilities.
+instead of rewriting history. Validate definition content at publication.
+Transition eligibility, enum validation, revision increments and payload
+propagation remain application responsibilities.
 
 ## Task storage boundary
 
 Insert an attempt before assigning its active token; clear the token and lease
 together on closure. The composite FK prevents cross-task ownership. Baseline
 schema checks permit one attempt; recovery/retry stages must migrate checks
-before introducing new states or larger budgets. Application writers still own
+before introducing larger budgets. Application writers still own
 fencing, lock order and atomic wakeups.
