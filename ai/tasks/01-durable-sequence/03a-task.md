@@ -1,6 +1,6 @@
 # 01-03a. Keep status enums in Go
 
-Status: Done
+Status: Open
 
 PR: https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/11
 
@@ -17,5 +17,5 @@ it does not upgrade databases that already applied the old migrations.
 
 - [x] Project rules and data reference describe the enum boundary.
 - [x] Fresh databases use plain text status columns without value lists; other invariants remain enforced.
-- [x] Go and isolated Python checks pass.
+- [ ] Go and isolated Python checks pass.
 - [x] Diff reviewed, business-logic limit verified, changes committed and pushed, and PR opened.
