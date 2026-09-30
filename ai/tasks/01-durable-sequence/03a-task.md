@@ -9,12 +9,13 @@ Dependency: [01-03](03-task.md). Follow the [shared execution rules](../README.m
 ## Outcome
 
 Keep enum definitions and validation in Go. Remove status allowed-value checks
-through a forward migration; preserve existing rows, lease consistency, foreign
-keys, uniqueness and attempt budgets. Applied migrations remain immutable.
+from initial migrations 0002/0003 and remove SQL enum tests and unused test helpers.
+This explicitly requested baseline rewrite is an exception to migration immutability;
+it does not upgrade databases that already applied the old migrations.
 
 ## Definition of Done
 
 - [x] Project rules and data reference describe the enum boundary.
-- [x] Fresh and existing databases use plain text status columns without value lists; other invariants remain enforced.
-- [x] Go and isolated Python checks pass, including data preservation during upgrade.
+- [x] Fresh databases use plain text status columns without value lists; other invariants remain enforced.
+- [x] Go and isolated Python checks pass.
 - [x] Diff reviewed, business-logic limit verified, changes committed and pushed, and PR opened.

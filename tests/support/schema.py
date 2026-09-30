@@ -22,11 +22,11 @@ class Definition:
         return identifier
 
 
-def insert_run(conn, definition_id, *, status="PENDING", version=1, payload=None):
+def insert_run(conn, definition_id, *, version=1, payload=None):
     identifier = uuid4()
     conn.execute(
-        "INSERT INTO orchestrator.workflow_runs (id, definition_id, status, version, input) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (identifier, definition_id, status, version, Jsonb(payload)),
+        "INSERT INTO orchestrator.workflow_runs (id, definition_id, version, input) "
+        "VALUES (%s, %s, %s, %s)",
+        (identifier, definition_id, version, Jsonb(payload)),
     )
     return identifier

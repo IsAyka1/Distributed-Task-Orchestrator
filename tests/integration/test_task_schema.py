@@ -29,11 +29,11 @@ class TaskRows:
         )
         return identifier
 
-    def attempt(self, task_id, *, number=1, status="RUNNING", worker="worker"):
+    def attempt(self, task_id, *, number=1, worker="worker"):
         identifier = uuid4()
         self.conn.execute(
-            "INSERT INTO orchestrator.task_attempts (id, task_run_id, attempt_no, status, worker_id) "
-            "VALUES (%s, %s, %s, %s, %s)", (identifier, task_id, number, status, worker),
+            "INSERT INTO orchestrator.task_attempts (id, task_run_id, attempt_no, worker_id) "
+            "VALUES (%s, %s, %s, %s)", (identifier, task_id, number, worker),
         )
         return identifier
 
@@ -78,22 +78,6 @@ def test_task_key_is_nonempty(rows):
         rows.task("")
 
 
-@pytest.mark.parametrize("status", ["", "RETRY_WAIT", "unknown"])
-def test_task_status_values_belong_to_application(rows, status):
-    task_id = rows.task(status=status)
-    assert rows.conn.execute(
-        "SELECT status FROM orchestrator.task_runs WHERE id=%s", (task_id,),
-    ).fetchone() == (status,)
-
-
-@pytest.mark.parametrize("status", ["", "PENDING", "LOST_LEASE", "unknown"])
-def test_attempt_status_values_belong_to_application(rows, status):
-    attempt_id = rows.attempt(rows.task(), status=status)
-    assert rows.conn.execute(
-        "SELECT status FROM orchestrator.task_attempts WHERE id=%s", (attempt_id,),
-    ).fetchone() == (status,)
-
-
 def test_attempt_identity_and_parent(rows):
     task_id = rows.task()
     rows.attempt(task_id)
@@ -104,14 +88,11 @@ def test_attempt_identity_and_parent(rows):
         rows.attempt(uuid4())
 
 
-@pytest.mark.parametrize("number,status,worker", [
-    (0, "RUNNING", "worker"), (-1, "RUNNING", "worker"), (2, "RUNNING", "worker"),
-    (1, "RUNNING", ""),
-])
-def test_attempt_validation(rows, number, status, worker):
+@pytest.mark.parametrize("number,worker", [(0, "worker"), (-1, "worker"), (2, "worker"), (1, "")])
+def test_attempt_validation(rows, number, worker):
     task_id = rows.task()
     with pytest.raises(psycopg.errors.CheckViolation):
-        rows.attempt(task_id, number=number, status=status, worker=worker)
+        rows.attempt(task_id, number=number, worker=worker)
 
 
 def test_active_attempt_must_belong_to_task(rows):
@@ -263,33 +244,3 @@ def test_migration_over_definition_schema(application, tmp_path):
         task_id = rows.task()
         rows.claim(task_id, rows.attempt(task_id))
         assert conn.execute("SELECT count(*) FROM orchestrator.workflow_runs").fetchone() == (1,)
-
-
-def test_status_migration_preserves_existing_execution(application, tmp_path):
-    for name in ["0001_database_time.sql", "0002_workflow_definitions_runs.sql",
-                 "0003_tasks_attempts_wakeups.sql"]:
-        shutil.copyfile(Path("/workspace/migrations") / name, tmp_path / name)
-    result = application.run("-migrations", str(tmp_path), binary="probe")
-    assert result.returncode == 0, result.stderr
-    Clock(application.database).set(INITIAL_TIME)
-    with application.database.connect() as conn:
-        workflow_id = insert_run(conn, Definition().insert(conn))
-        rows = TaskRows(conn, workflow_id)
-        task_id = rows.task()
-        attempt_id = rows.attempt(task_id)
-        rows.claim(task_id, attempt_id)
-        conn.execute("INSERT INTO orchestrator.workflow_wakeups (workflow_run_id) VALUES (%s)",
-                     (workflow_id,))
-        tables = ["workflow_runs", "task_runs", "task_attempts", "workflow_wakeups"]
-        before = [conn.execute(sql.SQL("SELECT * FROM orchestrator.{}").format(
-            sql.Identifier(table))).fetchall() for table in tables]
-        application.migrate()
-        application.migrate()
-        after = [conn.execute(sql.SQL("SELECT * FROM orchestrator.{}").format(
-            sql.Identifier(table))).fetchall() for table in tables]
-        assert after == before
-        assert conn.execute(
-            "SELECT count(*) FROM pg_constraint WHERE connamespace='orchestrator'::regnamespace "
-            "AND conname IN ('workflow_runs_status_check', 'task_runs_status_check', "
-            "'task_attempts_status_check')"
-        ).fetchone() == (0,)

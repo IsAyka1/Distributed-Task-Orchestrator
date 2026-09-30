@@ -26,8 +26,7 @@ FOR EACH STATEMENT EXECUTE FUNCTION orchestrator.reject_definition_mutation();
 CREATE TABLE orchestrator.workflow_runs (
     id uuid PRIMARY KEY,
     definition_id uuid NOT NULL REFERENCES orchestrator.workflow_definitions(id),
-    status text NOT NULL DEFAULT 'PENDING'
-        CHECK (status IN ('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED')),
+    status text NOT NULL DEFAULT 'PENDING',
     input jsonb NOT NULL DEFAULT 'null'::jsonb,
     output jsonb NOT NULL DEFAULT 'null'::jsonb,
     version bigint NOT NULL DEFAULT 1 CHECK (version > 0),

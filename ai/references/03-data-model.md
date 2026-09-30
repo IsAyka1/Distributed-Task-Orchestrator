@@ -47,10 +47,6 @@ Publication validates nonempty case-sensitive identities, positive version, none
 
 ## States
 
-The [status migration](../../migrations/0004_status_enums_in_code.sql) removes
-allowed-value checks without rewriting stored rows. Rolling it back requires all
-stored statuses to fit the old baseline; rollback rejects incompatible rows.
-
 The [definition/run migration](../../migrations/0002_workflow_definitions_runs.sql)
 protects published history. Publication still validates definition content and
 graphs; application writers enforce transitions and sample timestamps after
