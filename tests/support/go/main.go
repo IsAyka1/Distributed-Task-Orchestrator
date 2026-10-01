@@ -18,6 +18,7 @@ type clockSnapshot struct {
 
 func main() {
 	dir := flag.String("migrations", "", "test migration directory")
+	definitionAction := flag.String("definition", "", "test definition action")
 	instant := flag.String("now", "", "fixed application time")
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -27,6 +28,8 @@ func main() {
 		defer conn.Close()
 		if *dir != "" {
 			err = postgres.Migrate(ctx, conn, os.DirFS(*dir))
+		} else if *definitionAction != "" {
+			err = definitionCommand(ctx, conn, *definitionAction)
 		} else {
 			var app, db time.Time
 			app, err = time.Parse(time.RFC3339Nano, *instant)

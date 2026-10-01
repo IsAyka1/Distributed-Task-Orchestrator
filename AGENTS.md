@@ -90,3 +90,11 @@ together on closure. The composite FK prevents cross-task ownership. Baseline
 schema checks permit one attempt; recovery/retry stages must migrate checks
 before introducing larger budgets. Application writers still own
 fencing, lock order and atomic wakeups.
+
+## Definition publication boundary
+
+Publish through `application.Definitions`: validate before the atomic append,
+reject duplicate identity tuples even for identical content, and read exact
+versions without a latest-version fallback. Identity strings must be valid UTF-8
+without NUL; preserve their whitespace and case. Publication accepts DAGs and
+retry policies that later execution stages may reject.

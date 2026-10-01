@@ -112,3 +112,10 @@ propagation and persistence; evaluation performs no I/O.
 pgx `database/sql` pool, Goose migration provider and database time query. The production
 CLI embeds migrations and has no test-clock configuration. The separate Go probe
 under `tests/support` is built only for integration scenarios.
+
+## Definition publication
+
+[`application.Definitions`](../../internal/application/definitions.go) owns validation
+and a single atomic append boundary; the PostgreSQL adapter performs that append
+in one statement. Concurrent duplicate identities report a conflict without
+overwriting history. Reads select an exact tuple and revalidate stored content.

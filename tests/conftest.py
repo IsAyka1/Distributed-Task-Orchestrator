@@ -31,12 +31,12 @@ class Database:
 class Application:
     database: Database
 
-    def run(self, *args, binary="orchestrator", **environment):
+    def run(self, *args, binary="orchestrator", input=None, **environment):
         env = {"PATH": os.environ["PATH"], "DATABASE_URL": self.database.dsn, "DATABASE_TIMEOUT": "5s"}
         env.update(environment)
         try:
             return subprocess.run([f"/binaries/{binary}", *args], env=env,
-                                  text=True, capture_output=True, timeout=10)
+                                  text=True, input=input, capture_output=True, timeout=10)
         except (OSError, subprocess.SubprocessError):
             pytest.fail("Go test process failed or timed out", pytrace=False)
 
