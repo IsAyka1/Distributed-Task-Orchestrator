@@ -1,4 +1,4 @@
-package application
+package definitions
 
 import (
 	"context"
@@ -30,26 +30,26 @@ type PublishedDefinition struct {
 
 // Insert must atomically append one definition or report a duplicate identity.
 // It must never update an existing version, even when its content is identical.
-type DefinitionStore interface {
+type Repository interface {
 	Insert(context.Context, *workflow.Definition) (PublishedDefinition, error)
 	Find(context.Context, DefinitionKey) (PublishedDefinition, error)
 }
 
-type Definitions struct{ Store DefinitionStore }
+type Service struct{ Repository Repository }
 
-func (s Definitions) Publish(ctx context.Context, spec workflow.DefinitionSpec) (PublishedDefinition, error) {
+func (s Service) Publish(ctx context.Context, spec workflow.DefinitionSpec) (PublishedDefinition, error) {
 	definition, err := ValidatePublication(spec)
 	if err != nil {
 		return PublishedDefinition{}, err
 	}
-	return s.Store.Insert(ctx, definition)
+	return s.Repository.Insert(ctx, definition)
 }
 
-func (s Definitions) Get(ctx context.Context, key DefinitionKey) (PublishedDefinition, error) {
+func (s Service) Get(ctx context.Context, key DefinitionKey) (PublishedDefinition, error) {
 	if !validIdentity(key.Provider) || !validIdentity(key.Name) || key.Version <= 0 {
 		return PublishedDefinition{}, fmt.Errorf("%w: invalid identity", workflow.ErrInvalidDefinition)
 	}
-	return s.Store.Find(ctx, key)
+	return s.Repository.Find(ctx, key)
 }
 
 // Publication accepts DAGs; execution applies the narrower sequence restriction.
@@ -62,7 +62,7 @@ func ValidatePublication(spec workflow.DefinitionSpec) (*workflow.Definition, er
 		return nil, err
 	}
 	for _, task := range definition.Tasks() {
-		if !validIdentity(task.ID) || task.Type != "activity" {
+		if !validIdentity(task.ID) || task.Type != workflow.TaskTypeActivity {
 			return nil, fmt.Errorf("%w: task id and activity type required", workflow.ErrInvalidDefinition)
 		}
 	}

@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from dataclasses import dataclass
 from datetime import timedelta
 import json
 from threading import Barrier
@@ -9,36 +8,9 @@ from uuid import UUID
 import pytest
 
 
-@dataclass
-class Definitions:
-    application: object
-
-    def request(self, action, document):
-        return self.application.run("-definition", action, binary="probe", input=json.dumps(document))
-
-    def succeed(self, action, document):
-        result = self.request(action, document)
-        assert result.returncode == 0, result.stderr
-        return json.loads(result.stdout)
-
-
-@pytest.fixture
-def definitions(application, clock):
-    return Definitions(application)
-
-
-def definition():
-    # Declaration order is deliberately different from graph order.
-    return {"provider": " Demo ", "name": " Flow ", "version": 1, "tasks": [
-        {"id": "end", "type": "activity", "depends_on": ["left", "right"], "max_attempts": 3},
-        {"id": "right", "type": "activity", "depends_on": [], "max_attempts": 1},
-        {"id": "left", "type": "activity", "depends_on": [], "max_attempts": 2147483647},
-    ]}
-
-
-def test_roundtrip_new_version_and_prior_version_unchanged(definitions, clock):
-    original = definition()
-    first = definitions.succeed("publish", original)
+def test_roundtrip_new_version_and_prior_version_unchanged(definitions, clock, definition_data, seed_definition):
+    original = definition_data().document()
+    first = seed_definition("dag.yaml")
     assert UUID(first["id"]).version == 4
     assert first["definition"] == original
     assert first["created_at"] == clock.now.isoformat().replace("+00:00", "Z")
@@ -59,8 +31,8 @@ def test_roundtrip_new_version_and_prior_version_unchanged(definitions, clock):
     assert definitions.succeed("get", original) == first
 
 
-def test_defaults_and_exact_identity(definitions):
-    original = definition()
+def test_defaults_and_exact_identity(definitions, definition_data):
+    original = definition_data().document()
     del original["tasks"][0]["max_attempts"]
     result = definitions.succeed("publish", original)
     assert result["definition"]["tasks"][0]["max_attempts"] == 1
@@ -74,9 +46,9 @@ def test_defaults_and_exact_identity(definitions):
         assert definitions.succeed("get", other) == published
 
 
-def test_concurrent_same_version_has_one_winner(definitions, connection):
+def test_concurrent_same_version_has_one_winner(definitions, connection, definition_data):
     barrier = Barrier(2, timeout=5)
-    documents = [definition(), definition()]
+    documents = [definition_data().document(), definition_data().document()]
     documents[1]["tasks"][0]["max_attempts"] = 5
 
     def publish(document):
@@ -103,16 +75,16 @@ def test_concurrent_same_version_has_one_winner(definitions, connection):
     {"tasks": [{"id": "a", "type": "activity", "max_attempts": 2147483648}]},
     {"tasks": [{"id": "a", "type": "activity"}, {"id": "a", "type": "activity"}]},
 ])
-def test_invalid_publication_writes_nothing(definitions, connection, invalid):
-    result = definitions.request("publish", dict(definition(), **invalid))
+def test_invalid_publication_writes_nothing(definitions, connection, invalid, definition_data):
+    result = definitions.request("publish", dict(definition_data().document(), **invalid))
     assert result.returncode != 0
     assert "invalid_definition" in result.stderr
     assert connection.execute("SELECT count(*) FROM orchestrator.workflow_definitions").fetchone()[0] == 0
 
 
-def test_read_rejects_corrupt_stored_content(definitions, connection):
+def test_read_rejects_corrupt_stored_content(definitions, connection, definition_data):
     connection.execute("""INSERT INTO orchestrator.workflow_definitions
         (id, provider, name, version, definition)
         VALUES (gen_random_uuid(), ' Demo ', ' Flow ', 1, '{"tasks": []}')""")
-    result = definitions.request("get", definition())
+    result = definitions.request("get", definition_data().document())
     assert result.returncode != 0 and "invalid stored definition" in result.stderr

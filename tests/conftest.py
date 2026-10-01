@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from pathlib import Path
+from support.definitions import DefinitionData, Definitions
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 import os
@@ -144,3 +146,22 @@ def migration_dir(tmp_path):
 def connection(application, clock):
     with application.database.connect() as conn:
         yield conn
+
+
+@pytest.fixture
+def definition_data():
+    def load(filename="dag.yaml"):
+        return DefinitionData.from_yaml(Path(__file__).parent / "fixtures" / "definitions" / filename)
+    return load
+
+
+@pytest.fixture
+def definitions(application, clock):
+    return Definitions(application)
+
+
+@pytest.fixture
+def seed_definition(definitions, definition_data):
+    def seed(filename="dag.yaml"):
+        return definitions.succeed("publish", definition_data(filename).document())
+    return seed

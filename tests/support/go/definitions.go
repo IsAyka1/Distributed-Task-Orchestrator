@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/application"
-	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/storage/postgres"
+	repository "github.com/IsAyka1/Distributed-Task-Orchestrator/internal/repositories/definitions"
+	definitions "github.com/IsAyka1/Distributed-Task-Orchestrator/internal/services/definitions"
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/workflow"
 )
 
@@ -36,8 +36,8 @@ func definitionCommand(ctx context.Context, db *sql.DB, action string) error {
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
 		return err
 	}
-	service := application.Definitions{Store: postgres.DefinitionStore{DB: db}}
-	var result application.PublishedDefinition
+	service := definitions.Service{Repository: repository.Repository{DB: db}}
+	var result definitions.PublishedDefinition
 	var err error
 	switch action {
 	case "publish":
@@ -47,7 +47,7 @@ func definitionCommand(ctx context.Context, db *sql.DB, action string) error {
 		}
 		result, err = service.Publish(ctx, spec)
 	case "get":
-		result, err = service.Get(ctx, application.DefinitionKey{Provider: input.Provider, Name: input.Name, Version: input.Version})
+		result, err = service.Get(ctx, definitions.DefinitionKey{Provider: input.Provider, Name: input.Name, Version: input.Version})
 	default:
 		return fmt.Errorf("unknown definition action")
 	}

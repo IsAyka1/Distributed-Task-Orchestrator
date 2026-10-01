@@ -8,11 +8,12 @@ internal/
   workflow/           # immutable definitions, runs, state transitions
   task/               # task runs, attempts, retry policies, transitions
   engine/             # pure dependency evaluation
-  application/        # transactional use cases
+  services/           # application use cases, grouped by domain
+  repositories/       # persistence adapters, grouped by domain
   queue/              # claim and lease contracts
   scheduler/          # recovery, retries, timers
   worker/             # registry, executor, heartbeat
-  storage/postgres/   # SQL, transactions, repositories, queue
+  storage/postgres/   # bootstrap, migrations, database clock, queue SQL
   api/http/           # endpoints and DTOs
   observability/      # logs, metrics, tracing
   config/
@@ -115,7 +116,8 @@ under `tests/support` is built only for integration scenarios.
 
 ## Definition publication
 
-[`application.Definitions`](../../internal/application/definitions.go) owns validation
-and a single atomic append boundary; the PostgreSQL adapter performs that append
+[`definitions.Service`](../../internal/services/definitions/service.go) owns validation
+and a single atomic append boundary; the [repository](../../internal/repositories/definitions/repository.go) performs that append
 in one statement. Concurrent duplicate identities report a conflict without
-overwriting history. Reads select an exact tuple and revalidate stored content.
+overwriting history. Reads select an exact tuple and revalidate stored content. Repository SQL lives
+in adjacent embedded files.

@@ -1,0 +1,17 @@
+provider: ' Demo '
+name: ' Flow '
+version: 1
+# Deliberately declare the join before its dependencies.
+tasks:
+  - id: end
+    type: activity
+    depends_on: [left, right]
+    max_attempts: 3
+  - id: right
+    type: activity
+    depends_on: []
+    max_attempts: 1
+  - id: left
+    type: activity
+    depends_on: []
+    max_attempts: 2147483647

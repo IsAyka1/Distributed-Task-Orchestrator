@@ -2,6 +2,8 @@ package workflow
 
 import "slices"
 
+const TaskTypeActivity = "activity"
+
 type DefinitionSpec struct {
 	Provider string
 	Name     string

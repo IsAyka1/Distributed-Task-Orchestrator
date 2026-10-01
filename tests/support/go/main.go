@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,13 +18,23 @@ type clockSnapshot struct {
 }
 
 func main() {
-	dir := flag.String("migrations", "", "test migration directory")
-	definitionAction := flag.String("definition", "", "test definition action")
-	instant := flag.String("now", "", "fixed application time")
-	flag.Parse()
+	if err := run(os.Args[1:], postgres.Open); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run(args []string, open func(context.Context, string) (*sql.DB, error)) error {
+	flags := flag.NewFlagSet("probe", flag.ContinueOnError)
+	dir := flags.String("migrations", "", "test migration directory")
+	definitionAction := flags.String("definition", "", "test definition action")
+	instant := flags.String("now", "", "fixed application time")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conn, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
+	conn, err := open(ctx, os.Getenv("DATABASE_URL"))
 	if err == nil {
 		defer conn.Close()
 		if *dir != "" {
@@ -41,8 +52,5 @@ func main() {
 			}
 		}
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return err
 }

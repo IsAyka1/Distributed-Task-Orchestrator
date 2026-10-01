@@ -1,6 +1,6 @@
 # 01-04. Persist and read immutable definitions
 
-Status: Done
+Status: Open
 
 PR: https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/12
 
@@ -22,7 +22,7 @@ Deliver one independently verifiable PR for this outcome. Keep adjacent capabili
 ## Definition of Done
 
 - [x] Validation precedes persistence. Publishing the same version cannot overwrite a row. Reads preserve all definition fields.
-- [x] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
+- [ ] The checks below pass and the PR records actual commands and results. Documentation-only changes have their examples and links checked.
 - [x] Reusable mocks are used where test doubles are needed. Time is mocked before time-dependent code runs. Integration tests are written in Python against real PostgreSQL.
 - [x] Contract or data changes update the affected references and `AGENTS.md` in the same PR; linked tasks remain consistent.
 - [x] The diff is reviewed and changes no more than 500 business-logic lines, excluding tests and documentation.

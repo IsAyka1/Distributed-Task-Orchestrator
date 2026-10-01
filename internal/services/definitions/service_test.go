@@ -1,4 +1,4 @@
-package application
+package definitions
 
 import (
 	"context"
@@ -8,18 +8,18 @@ import (
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/workflow"
 )
 
-type definitionStoreFake struct {
+type repositoryFake struct {
 	inserted *workflow.Definition
 	key      DefinitionKey
 	result   PublishedDefinition
 	err      error
 }
 
-func (f *definitionStoreFake) Insert(ctx context.Context, d *workflow.Definition) (PublishedDefinition, error) {
+func (f *repositoryFake) Insert(ctx context.Context, d *workflow.Definition) (PublishedDefinition, error) {
 	f.inserted = d
 	return f.result, f.err
 }
-func (f *definitionStoreFake) Find(ctx context.Context, key DefinitionKey) (PublishedDefinition, error) {
+func (f *repositoryFake) Find(ctx context.Context, key DefinitionKey) (PublishedDefinition, error) {
 	f.key = key
 	return f.result, f.err
 }
@@ -42,10 +42,10 @@ func TestPublishRejectsInvalidBeforeStorage(t *testing.T) {
 		{"empty provider", func(s *workflow.DefinitionSpec) { s.Provider = "" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &definitionStoreFake{}
+			f := &repositoryFake{}
 			spec := validSpec()
 			tc.change(&spec)
-			_, err := (Definitions{Store: f}).Publish(context.Background(), spec)
+			_, err := (Service{Repository: f}).Publish(context.Background(), spec)
 			if !errors.Is(err, workflow.ErrInvalidDefinition) || f.inserted != nil {
 				t.Fatalf("err=%v inserted=%v", err, f.inserted)
 			}
@@ -53,13 +53,13 @@ func TestPublishRejectsInvalidBeforeStorage(t *testing.T) {
 	}
 }
 func TestPublishAllowsDAGAndPreservesPolicy(t *testing.T) {
-	f := &definitionStoreFake{result: PublishedDefinition{ID: "published"}}
+	f := &repositoryFake{result: PublishedDefinition{ID: "published"}}
 	spec := validSpec()
 	spec.Name = " Flow "
 	attempts := int64(3)
 	spec.Tasks[0].MaxAttempts = &attempts
 	spec.Tasks = append(spec.Tasks, workflow.TaskSpec{ID: "b", Type: "activity"})
-	got, err := (Definitions{Store: f}).Publish(context.Background(), spec)
+	got, err := (Service{Repository: f}).Publish(context.Background(), spec)
 	if err != nil || got.ID != "published" || f.inserted.Name() != " Flow " || f.inserted.Tasks()[0].MaxAttempts != 3 {
 		t.Fatalf("got=%+v err=%v", got, err)
 	}
@@ -70,8 +70,8 @@ func TestPublishAllowsDAGAndPreservesPolicy(t *testing.T) {
 	}
 }
 func TestDefinitionStorageErrors(t *testing.T) {
-	f := &definitionStoreFake{err: ErrDefinitionExists}
-	service := Definitions{Store: f}
+	f := &repositoryFake{err: ErrDefinitionExists}
+	service := Service{Repository: f}
 	if _, err := service.Publish(context.Background(), validSpec()); !errors.Is(err, ErrDefinitionExists) {
 		t.Fatal(err)
 	}
