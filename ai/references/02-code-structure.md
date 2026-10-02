@@ -8,11 +8,12 @@ internal/
   workflow/           # immutable definitions, runs, state transitions
   task/               # task runs, attempts, retry policies, transitions
   engine/             # pure dependency evaluation
-  application/        # transactional use cases
+  services/           # application use cases, grouped by domain
+  repositories/       # persistence adapters, grouped by domain
   queue/              # claim and lease contracts
   scheduler/          # recovery, retries, timers
   worker/             # registry, executor, heartbeat
-  storage/postgres/   # SQL, transactions, repositories, queue
+  storage/postgres/   # bootstrap, migrations, database clock, queue SQL
   api/http/           # endpoints and DTOs
   observability/      # logs, metrics, tracing
   config/
@@ -112,3 +113,11 @@ propagation and persistence; evaluation performs no I/O.
 pgx `database/sql` pool, Goose migration provider and database time query. The production
 CLI embeds migrations and has no test-clock configuration. The separate Go probe
 under `tests/support` is built only for integration scenarios.
+
+## Definition publication
+
+[`definitions.Service`](../../internal/services/definitions/service.go) owns validation
+and a single atomic append boundary; the [repository](../../internal/repositories/definitions/repository.go) performs that append
+in one statement. Concurrent duplicate identities report a conflict without
+overwriting history. Reads select an exact tuple and revalidate stored content. Repository SQL lives
+in adjacent embedded files.

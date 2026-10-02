@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from pathlib import Path
+from support.definitions import DefinitionData, Definitions
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 import os
@@ -31,12 +33,12 @@ class Database:
 class Application:
     database: Database
 
-    def run(self, *args, binary="orchestrator", **environment):
+    def run(self, *args, binary="orchestrator", input=None, **environment):
         env = {"PATH": os.environ["PATH"], "DATABASE_URL": self.database.dsn, "DATABASE_TIMEOUT": "5s"}
         env.update(environment)
         try:
             return subprocess.run([f"/binaries/{binary}", *args], env=env,
-                                  text=True, capture_output=True, timeout=10)
+                                  text=True, input=input, capture_output=True, timeout=10)
         except (OSError, subprocess.SubprocessError):
             pytest.fail("Go test process failed or timed out", pytrace=False)
 
@@ -144,3 +146,22 @@ def migration_dir(tmp_path):
 def connection(application, clock):
     with application.database.connect() as conn:
         yield conn
+
+
+@pytest.fixture
+def definition_data():
+    def load(filename="dag.yaml"):
+        return DefinitionData.from_yaml(Path(__file__).parent / "fixtures" / "definitions" / filename)
+    return load
+
+
+@pytest.fixture
+def definitions(application, clock):
+    return Definitions(application)
+
+
+@pytest.fixture
+def seed_definition(definitions, definition_data):
+    def seed(filename="dag.yaml"):
+        return definitions.succeed("publish", definition_data(filename).document())
+    return seed

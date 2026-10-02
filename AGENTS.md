@@ -90,3 +90,16 @@ together on closure. The composite FK prevents cross-task ownership. Baseline
 schema checks permit one attempt; recovery/retry stages must migrate checks
 before introducing larger budgets. Application writers still own
 fencing, lock order and atomic wakeups.
+
+## Definition publication boundary
+
+Publish through `services/definitions.Service`: validate before the atomic append,
+reject duplicate identity tuples even for identical content, and read exact
+versions without a latest-version fallback. Identity strings must be valid UTF-8
+without NUL; preserve their whitespace and case. Publication accepts DAGs and
+retry policies that later execution stages may reject.
+
+Place application services in `internal/services/<domain>` and persistence adapters
+in `internal/repositories/<domain>`. Name their dependencies repositories and embed
+SQL from adjacent `.sql` files. PostgreSQL bootstrap and queue SQL remain in
+`storage/postgres`. Use named constants for task types.
