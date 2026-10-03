@@ -65,6 +65,7 @@ type Repository interface {
 
 // All writes belong to one READ COMMITTED transaction owned by the service.
 type Transaction interface {
+	EvaluationTransaction
 	InsertWorkflow(context.Context, StartRequest) (StartedWorkflow, error)
 	InsertTask(context.Context, TaskStart) (StartedTask, error)
 	Enqueue(context.Context, StartedWorkflow) (Wakeup, error)

@@ -16,6 +16,7 @@ import (
 
 type workflowInput struct {
 	DefinitionID string          `json:"definition_id"`
+	WorkflowID   string          `json:"workflow_id"`
 	Input        json.RawMessage `json:"input"`
 }
 
@@ -26,7 +27,7 @@ type workflowOutput struct {
 }
 
 func workflowCommand(ctx context.Context, db *sql.DB, action string) error {
-	if action != "start" && action != "insert" {
+	if action != "start" && action != "insert" && action != "evaluate" && action != "evaluate-one-connection" {
 		return fmt.Errorf("unknown workflow action")
 	}
 	var input workflowInput
@@ -37,6 +38,12 @@ func workflowCommand(ctx context.Context, db *sql.DB, action string) error {
 		return insertWorkflowRecords(ctx, db, input)
 	}
 	s := service.Service{Definitions: definitions.Repository{DB: db}, Repository: repository.Repository{DB: db}}
+	if action == "evaluate-one-connection" {
+		db.SetMaxOpenConns(1)
+	}
+	if action == "evaluate" || action == "evaluate-one-connection" {
+		return s.EvaluateWorkflow(ctx, input.WorkflowID)
+	}
 	run, err := s.StartWorkflow(ctx, service.StartRequest{DefinitionID: input.DefinitionID, Input: workflow.Payload{Value: input.Input}})
 	if err != nil {
 		return err

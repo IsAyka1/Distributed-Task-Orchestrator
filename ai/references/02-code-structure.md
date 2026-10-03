@@ -105,6 +105,9 @@ guards, fencing and atomic persistence.
 [`internal/engine`](../../internal/engine/evaluate.go) proposes sequence progress.
 Callers supply a complete snapshot under the workflow lock and own payload
 propagation and persistence; evaluation performs no I/O.
+[`workflows.Service.EvaluateWorkflow`](../../internal/services/workflows/evaluate.go)
+owns the durable boundary. All reads during evaluation use its transaction
+connection to avoid pool starvation while concurrent evaluators wait on locks.
 
 ## Database bootstrap
 

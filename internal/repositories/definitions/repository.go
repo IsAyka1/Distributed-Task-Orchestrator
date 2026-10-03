@@ -12,7 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type Repository struct{ DB *sql.DB }
+type Queryer interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+type Repository struct{ DB Queryer }
 
 var _ service.Repository = Repository{}
 
