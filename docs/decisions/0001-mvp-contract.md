@@ -12,6 +12,11 @@ Reject an empty definition at publication and in domain validation. Valid DAGs m
 
 Known application records use explicit named types, including definition, task definition, workflow run, task run, attempt, claim, completion, and HTTP error. JSON is decoded and validated into these types at boundaries. Activity-specific input/output is an opaque JSON value to the orchestrator, carried in a named payload type; activity adapters validate it into their own named types. This does not authorize generic maps for known orchestrator fields.
 
+Payloads must fit PostgreSQL JSONB: NUL characters, invalid Unicode surrogate
+escapes and numbers outside the database numeric range are rejected as
+`invalid_request`, without exposing SQL errors or payload contents. JSONB
+normalization applies; raw formatting and duplicate object keys are not preserved.
+
 Example publication (three registered activities):
 
 ```json

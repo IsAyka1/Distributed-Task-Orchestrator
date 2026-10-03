@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrDefinitionExists   = errors.New("definition_version_conflict")
-	ErrDefinitionNotFound = errors.New("definition_not_found")
+	ErrDefinitionExists    = errors.New("definition_version_conflict")
+	ErrDefinitionNotFound  = errors.New("definition_not_found")
+	ErrInvalidDefinitionID = errors.New("invalid_definition_id")
 )
 
 type DefinitionKey struct {

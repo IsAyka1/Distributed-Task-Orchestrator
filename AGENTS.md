@@ -100,6 +100,20 @@ without NUL; preserve their whitespace and case. Publication accepts DAGs and
 retry policies that later execution stages may reject.
 
 Place application services in `internal/services/<domain>` and persistence adapters
-in `internal/repositories/<domain>`. Name their dependencies repositories and embed
-SQL from adjacent `.sql` files. PostgreSQL bootstrap and queue SQL remain in
+in `internal/repositories/<domain>`. Name their dependencies repositories. Keep SQL
+in adjacent `.sql` files and group all `go:embed` declarations in one `queries.go`
+per repository module. Repository inserts return new typed records with
+database-generated values; transaction-scoped results remain provisional until
+commit. PostgreSQL bootstrap and queue SQL remain in
 `storage/postgres`. Use named constants for task types.
+
+## Workflow start boundary
+
+Start through `services/workflows.Service`. Read the exact immutable definition
+by UUID, letting PostgreSQL parse the ID and mapping malformed IDs to
+`invalid_request` without exposing database errors. Reject nonsequences and retry
+limits above 1 before opening the write transaction. Commit the PENDING run, tasks and wakeup together; only the root
+receives the supplied input. Return success only after commit. Starts are not
+idempotent, so an unknown commit outcome must not be blindly retried.
+Payloads must be representable as PostgreSQL JSONB; report rejected input as
+`invalid_request` without disclosing database errors or payload contents.

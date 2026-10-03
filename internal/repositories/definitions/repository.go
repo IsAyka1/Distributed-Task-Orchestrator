@@ -3,7 +3,6 @@ package definitions
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,12 +15,6 @@ import (
 type Repository struct{ DB *sql.DB }
 
 var _ service.Repository = Repository{}
-
-//go:embed insert.sql
-var insertSQL string
-
-//go:embed find.sql
-var findSQL string
 
 type definitionDocument struct {
 	Tasks []definitionTask `json:"tasks"`
@@ -66,6 +59,29 @@ func (s Repository) Find(ctx context.Context, key service.DefinitionKey) (servic
 	if err != nil {
 		return service.PublishedDefinition{}, fmt.Errorf("read definition: %w", err)
 	}
+	return decodeDefinition(published, key, content)
+}
+
+func (s Repository) FindByID(ctx context.Context, id string) (service.PublishedDefinition, error) {
+	var published service.PublishedDefinition
+	var key service.DefinitionKey
+	var content []byte
+	err := s.DB.QueryRowContext(ctx, findByIDSQL, id).Scan(&published.ID, &published.CreatedAt,
+		&key.Provider, &key.Name, &key.Version, &content)
+	if errors.Is(err, sql.ErrNoRows) {
+		return service.PublishedDefinition{}, service.ErrDefinitionNotFound
+	}
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22021") {
+			return service.PublishedDefinition{}, service.ErrInvalidDefinitionID
+		}
+		return service.PublishedDefinition{}, fmt.Errorf("read definition by id: %w", err)
+	}
+	return decodeDefinition(published, key, content)
+}
+
+func decodeDefinition(published service.PublishedDefinition, key service.DefinitionKey, content []byte) (service.PublishedDefinition, error) {
 	var document definitionDocument
 	if err := json.Unmarshal(content, &document); err != nil {
 		return service.PublishedDefinition{}, fmt.Errorf("decode stored definition: %w", err)
@@ -74,9 +90,10 @@ func (s Repository) Find(ctx context.Context, key service.DefinitionKey) (servic
 	for _, task := range document.Tasks {
 		spec.Tasks = append(spec.Tasks, workflow.TaskSpec{ID: task.ID, Type: task.Type, DependsOn: task.DependsOn, MaxAttempts: task.MaxAttempts})
 	}
-	published.Definition, err = service.ValidatePublication(spec)
+	definition, err := service.ValidatePublication(spec)
 	if err != nil {
 		return service.PublishedDefinition{}, fmt.Errorf("invalid stored definition: %w", err)
 	}
+	published.Definition = definition
 	return published, nil
 }

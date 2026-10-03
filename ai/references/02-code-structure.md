@@ -119,5 +119,15 @@ under `tests/support` is built only for integration scenarios.
 [`definitions.Service`](../../internal/services/definitions/service.go) owns validation
 and a single atomic append boundary; the [repository](../../internal/repositories/definitions/repository.go) performs that append
 in one statement. Concurrent duplicate identities report a conflict without
-overwriting history. Reads select an exact tuple and revalidate stored content. Repository SQL lives
-in adjacent embedded files.
+overwriting history. Reads select an exact tuple and revalidate stored content.
+Keep SQL in adjacent `.sql` files, with all embed declarations in one `queries.go`
+per repository module. Repository inserts return typed records with generated
+values; transaction-scoped results are provisional until commit.
+
+## Workflow start
+
+[`workflows.Service`](../../internal/services/workflows/service.go) owns the start
+transaction through a repository transaction interface. Definition reads may
+precede it because publication is immutable; all execution writes use the same
+READ COMMITTED transaction. The [adapter](../../internal/repositories/workflows/repository.go)
+has no activity calls or execution loops.
