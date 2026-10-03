@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 from support.definitions import DefinitionData, Definitions
+from support.workflows import Workflows
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 import os
@@ -165,3 +166,8 @@ def seed_definition(definitions, definition_data):
     def seed(filename="dag.yaml"):
         return definitions.succeed("publish", definition_data(filename).document())
     return seed
+
+
+@pytest.fixture
+def workflows(application, clock):
+    return Workflows(application)

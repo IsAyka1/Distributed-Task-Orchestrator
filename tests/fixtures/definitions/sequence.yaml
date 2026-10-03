@@ -1,0 +1,12 @@
+provider: demo
+name: sequence
+version: 1
+tasks:
+  - id: C
+    type: activity
+    depends_on: [B]
+  - id: A
+    type: activity
+  - id: B
+    type: activity
+    depends_on: [A]

@@ -121,3 +121,11 @@ and a single atomic append boundary; the [repository](../../internal/repositorie
 in one statement. Concurrent duplicate identities report a conflict without
 overwriting history. Reads select an exact tuple and revalidate stored content. Repository SQL lives
 in adjacent embedded files.
+
+## Workflow start
+
+[`workflows.Service`](../../internal/services/workflows/service.go) owns the start
+transaction through a repository transaction interface. Definition reads may
+precede it because publication is immutable; all execution writes use the same
+READ COMMITTED transaction. The [adapter](../../internal/repositories/workflows/repository.go)
+has no activity calls or execution loops.
