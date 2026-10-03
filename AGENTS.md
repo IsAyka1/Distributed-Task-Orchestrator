@@ -100,10 +100,11 @@ without NUL; preserve their whitespace and case. Publication accepts DAGs and
 retry policies that later execution stages may reject.
 
 Place application services in `internal/services/<domain>` and persistence adapters
-in `internal/repositories/<domain>`. Name their dependencies repositories and keep
-all queries for each package in one `queries.go` file. Repository inserts return
-new typed records with database-generated values; transaction-scoped results
-remain provisional until commit. PostgreSQL bootstrap and queue SQL remain in
+in `internal/repositories/<domain>`. Name their dependencies repositories. Keep SQL
+in adjacent `.sql` files and group all `go:embed` declarations in one `queries.go`
+per repository module. Repository inserts return new typed records with
+database-generated values; transaction-scoped results remain provisional until
+commit. PostgreSQL bootstrap and queue SQL remain in
 `storage/postgres`. Use named constants for task types.
 
 ## Workflow start boundary

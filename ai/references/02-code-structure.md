@@ -120,9 +120,9 @@ under `tests/support` is built only for integration scenarios.
 and a single atomic append boundary; the [repository](../../internal/repositories/definitions/repository.go) performs that append
 in one statement. Concurrent duplicate identities report a conflict without
 overwriting history. Reads select an exact tuple and revalidate stored content.
-Keep each package's SQL in one `queries.go` file. Repository inserts return typed
-records with generated values; transaction-scoped results are provisional until
-commit.
+Keep SQL in adjacent `.sql` files, with all embed declarations in one `queries.go`
+per repository module. Repository inserts return typed records with generated
+values; transaction-scoped results are provisional until commit.
 
 ## Workflow start
 

@@ -1,11 +1,12 @@
 package definitions
 
-const insertSQL = `INSERT INTO orchestrator.workflow_definitions
- (id, provider, name, version, definition) VALUES (gen_random_uuid(), $1, $2, $3, $4)
- RETURNING id::text, created_at;`
+import _ "embed"
 
-const findSQL = `SELECT id::text, created_at, definition
- FROM orchestrator.workflow_definitions WHERE name = $1 AND version = $2 AND provider = $3;`
+//go:embed insert.sql
+var insertSQL string
 
-const findByIDSQL = `SELECT id, created_at, provider, name, version, definition
-FROM orchestrator.workflow_definitions WHERE id = $1;`
+//go:embed find.sql
+var findSQL string
+
+//go:embed find_by_id.sql
+var findByIDSQL string

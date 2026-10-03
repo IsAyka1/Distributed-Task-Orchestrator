@@ -1,3 +1,6 @@
 package postgres
 
-const databaseNowSQL = `SELECT orchestrator.database_now()`
+import _ "embed"
+
+//go:embed database_now.sql
+var databaseNowSQL string
