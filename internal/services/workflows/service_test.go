@@ -13,6 +13,7 @@ import (
 const definitionID = "00112233-4455-6677-8899-aabbccddeeff"
 
 type startFake struct {
+	EvaluationTransaction
 	definition                   definitions.PublishedDefinition
 	stage                        string
 	failure                      error

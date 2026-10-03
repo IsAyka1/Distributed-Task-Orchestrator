@@ -117,3 +117,11 @@ receives the supplied input. Return success only after commit. Starts are not
 idempotent, so an unknown commit outcome must not be blindly retried.
 Payloads must be representable as PostgreSQL JSONB; report rejected input as
 `invalid_request` without disclosing database errors or payload contents.
+
+## Durable evaluation boundary
+
+Evaluate through `services/workflows.Service` using one transaction connection,
+including definition reads, so lock waiters cannot exhaust the pool needed by
+the lock holder. Recheck the wakeup after locking the workflow; an absent signal
+is a no-op. Rollback preserves the signal; after an uncertain commit, retry by
+workflow ID and recheck it.
