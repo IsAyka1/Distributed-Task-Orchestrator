@@ -1,4 +1,6 @@
 from copy import deepcopy
+from datetime import datetime
+import json
 from uuid import UUID, uuid4
 
 import pytest
@@ -87,3 +89,47 @@ def test_jsonb_incompatible_payload_is_invalid_request(seed_definition, applicat
     assert result.returncode != 0 and "invalid_request" in result.stderr
     assert "SQLSTATE" not in result.stderr
     assert_no_execution(connection)
+
+
+@pytest.mark.parametrize("definition_id", ["", "not-a-uuid", "00112233-4455-6677-8899-aabbccddeefg",
+                                          "\x00", "00112233-4455-6677-8899-aabbccddeeff\x00suffix"])
+def test_invalid_definition_id_is_sanitized(workflows, connection, definition_id):
+    result = workflows.request(definition_id)
+    assert result.returncode != 0 and "invalid_request" in result.stderr
+    assert "SQLSTATE" not in result.stderr
+    assert_no_execution(connection)
+
+
+def test_start_accepts_database_uuid_format(seed_definition, workflows, connection):
+    published = seed_definition("sequence.yaml")
+    run = workflows.start(published["id"].replace("-", "").upper())
+    assert connection.execute("SELECT definition_id FROM orchestrator.workflow_runs WHERE id = %s",
+                              (run["id"],)).fetchone() == (UUID(published["id"]),)
+
+
+def test_repository_inserts_return_persisted_records(definitions, application, connection, clock):
+    published = definitions.succeed("publish", {"provider": "demo", "name": "single", "version": 1,
+        "tasks": [{"id": "A", "type": "activity"}]})
+    payload = {"value": [1, None, "text"]}
+    result = application.run("-workflow", "insert", binary="probe",
+        input=json.dumps({"definition_id": published["id"], "input": payload}))
+    assert result.returncode == 0, result.stderr
+    records = json.loads(result.stdout)
+    run, task, wakeup = records["workflow"], records["task"], records["wakeup"]
+    assert UUID(run["ID"]).version == UUID(task["ID"]).version == 4
+    assert task["ID"] != run["ID"]
+    assert run["Status"] == task["Status"] == "PENDING"
+    assert task["WorkflowID"] == wakeup["WorkflowID"] == run["ID"]
+    assert task["Key"] == "A" and task["Input"]["Value"] == payload
+    assert task["MaxAttempts"] == 1 and task["AttemptCount"] == 0
+    assert all(datetime.fromisoformat(record["CreatedAt"]) == clock.now for record in (run, task, wakeup))
+    assert datetime.fromisoformat(task["AvailableAt"]) == clock.now
+    assert connection.execute("SELECT id, status, created_at FROM orchestrator.workflow_runs").fetchone() == (
+        UUID(run["ID"]), run["Status"], datetime.fromisoformat(run["CreatedAt"]))
+    assert connection.execute("""SELECT id, workflow_run_id, task_key, status, input, max_attempt_count,
+        attempt_count, created_at, available_at FROM orchestrator.task_runs""").fetchone() == (
+            UUID(task["ID"]), UUID(task["WorkflowID"]), task["Key"], task["Status"], task["Input"]["Value"],
+            task["MaxAttempts"], task["AttemptCount"], datetime.fromisoformat(task["CreatedAt"]),
+            datetime.fromisoformat(task["AvailableAt"]))
+    assert connection.execute("SELECT workflow_run_id, created_at FROM orchestrator.workflow_wakeups").fetchone() == (
+        UUID(wakeup["WorkflowID"]), datetime.fromisoformat(wakeup["CreatedAt"]))

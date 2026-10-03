@@ -39,13 +39,13 @@ func (f *startFake) InsertWorkflow(_ context.Context, request StartRequest) (Sta
 	f.request = request
 	return StartedWorkflow{ID: "run", Status: workflow.Pending, CreatedAt: time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)}, f.fail("run")
 }
-func (f *startFake) InsertTask(_ context.Context, task TaskStart) error {
+func (f *startFake) InsertTask(_ context.Context, task TaskStart) (StartedTask, error) {
 	f.tasks = append(f.tasks, task)
-	return f.fail("task")
+	return StartedTask{}, f.fail("task")
 }
-func (f *startFake) Enqueue(_ context.Context, run StartedWorkflow) error {
+func (f *startFake) Enqueue(_ context.Context, run StartedWorkflow) (Wakeup, error) {
 	f.wakeup = run
-	return f.fail("wakeup")
+	return Wakeup{WorkflowID: run.ID, CreatedAt: run.CreatedAt}, f.fail("wakeup")
 }
 func (f *startFake) Commit() error   { f.committed = true; return f.fail("commit") }
 func (f *startFake) Rollback() error { f.rolledBack = true; return nil }
@@ -122,7 +122,7 @@ func TestStartErrorsReturnNoRunAndRollBack(t *testing.T) {
 
 func TestStartValidatesRequestBeforeStorage(t *testing.T) {
 	for _, request := range []StartRequest{
-		{}, {DefinitionID: "not-a-uuid"}, {DefinitionID: definitionID, Input: workflow.Payload{Value: []byte("{")}},
+		{DefinitionID: definitionID, Input: workflow.Payload{Value: []byte("{")}},
 		{DefinitionID: definitionID, Input: workflow.Payload{Value: []byte{'"', 0xff, '"'}}},
 	} {
 		_, err := (Service{}).StartWorkflow(context.Background(), request)
@@ -139,5 +139,25 @@ func TestOmittedInputIsJSONNull(t *testing.T) {
 	}
 	if string(f.request.Input.Value) != "null" || string(f.tasks[0].Input.Value) != "null" {
 		t.Fatal(f.request, f.tasks)
+	}
+}
+
+func TestStartPassesDefinitionIDToRepository(t *testing.T) {
+	f, s := setup(t, []workflow.TaskSpec{{ID: "A", Type: workflow.TaskTypeActivity}})
+	id := "00112233445566778899aabbccddeeff"
+	if _, err := s.StartWorkflow(context.Background(), StartRequest{DefinitionID: id}); err != nil {
+		t.Fatal(err)
+	}
+	if f.request.DefinitionID != id {
+		t.Fatal("definition ID changed")
+	}
+}
+
+func TestStartRejectsInvalidDefinitionIDBeforeTransaction(t *testing.T) {
+	f, s := setup(t, []workflow.TaskSpec{{ID: "A", Type: workflow.TaskTypeActivity}})
+	f.stage, f.failure = "find", definitions.ErrInvalidDefinitionID
+	_, err := s.StartWorkflow(context.Background(), StartRequest{DefinitionID: "invalid"})
+	if !errors.Is(err, ErrInvalidRequest) || f.begun {
+		t.Fatalf("err=%v begun=%v", err, f.begun)
 	}
 }

@@ -31,6 +31,6 @@ func Open(ctx context.Context, dsn string) (*sql.DB, error) {
 
 func Now(ctx context.Context, db *sql.DB) (time.Time, error) {
 	var now time.Time
-	err := db.QueryRowContext(ctx, "SELECT orchestrator.database_now()").Scan(&now)
+	err := db.QueryRowContext(ctx, databaseNowSQL).Scan(&now)
 	return now, err
 }

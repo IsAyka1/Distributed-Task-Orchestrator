@@ -3,7 +3,6 @@ package workflows
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"errors"
 	"fmt"
 
@@ -19,15 +18,6 @@ type transaction struct{ *sql.Tx }
 
 var _ service.Repository = Repository{}
 
-//go:embed insert_workflow.sql
-var insertWorkflowSQL string
-
-//go:embed insert_task.sql
-var insertTaskSQL string
-
-//go:embed enqueue.sql
-var enqueueSQL string
-
 func (r Repository) Begin(ctx context.Context) (service.Transaction, error) {
 	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
@@ -37,8 +27,8 @@ func (r Repository) Begin(ctx context.Context) (service.Transaction, error) {
 }
 
 func (t transaction) InsertWorkflow(ctx context.Context, request service.StartRequest) (service.StartedWorkflow, error) {
-	run := service.StartedWorkflow{Status: workflow.Pending}
-	err := t.QueryRowContext(ctx, insertWorkflowSQL, request.DefinitionID, run.Status, []byte(request.Input.Value)).Scan(&run.ID, &run.CreatedAt)
+	var run service.StartedWorkflow
+	err := t.QueryRowContext(ctx, insertWorkflowSQL, request.DefinitionID, workflow.Pending, []byte(request.Input.Value)).Scan(&run.ID, &run.Status, &run.CreatedAt)
 	if err != nil {
 		// JSONB has stricter Unicode and numeric limits than JSON syntax.
 		var pgErr *pgconn.PgError
@@ -50,19 +40,23 @@ func (t transaction) InsertWorkflow(ctx context.Context, request service.StartRe
 	return run, nil
 }
 
-func (t transaction) InsertTask(ctx context.Context, input service.TaskStart) error {
-	_, err := t.ExecContext(ctx, insertTaskSQL, input.WorkflowID, input.Key, task.Pending,
-		[]byte(input.Input.Value), input.MaxAttempts, input.CreatedAt)
+func (t transaction) InsertTask(ctx context.Context, input service.TaskStart) (service.StartedTask, error) {
+	var created service.StartedTask
+	err := t.QueryRowContext(ctx, insertTaskSQL, input.WorkflowID, input.Key, task.Pending,
+		[]byte(input.Input.Value), input.MaxAttempts, input.CreatedAt).Scan(
+		&created.ID, &created.WorkflowID, &created.Key, &created.Status, &created.Input.Value,
+		&created.MaxAttempts, &created.AttemptCount, &created.CreatedAt, &created.AvailableAt)
 	if err != nil {
-		return fmt.Errorf("insert workflow task: %w", err)
+		return service.StartedTask{}, fmt.Errorf("insert workflow task: %w", err)
 	}
-	return nil
+	return created, nil
 }
 
-func (t transaction) Enqueue(ctx context.Context, run service.StartedWorkflow) error {
-	_, err := t.ExecContext(ctx, enqueueSQL, run.ID, run.CreatedAt)
+func (t transaction) Enqueue(ctx context.Context, run service.StartedWorkflow) (service.Wakeup, error) {
+	var wakeup service.Wakeup
+	err := t.QueryRowContext(ctx, enqueueSQL, run.ID, run.CreatedAt).Scan(&wakeup.WorkflowID, &wakeup.CreatedAt)
 	if err != nil {
-		return fmt.Errorf("enqueue workflow: %w", err)
+		return service.Wakeup{}, fmt.Errorf("enqueue workflow: %w", err)
 	}
-	return nil
+	return wakeup, nil
 }

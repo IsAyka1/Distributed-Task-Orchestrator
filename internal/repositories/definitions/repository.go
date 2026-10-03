@@ -3,7 +3,6 @@ package definitions
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,15 +15,6 @@ import (
 type Repository struct{ DB *sql.DB }
 
 var _ service.Repository = Repository{}
-
-//go:embed insert.sql
-var insertSQL string
-
-//go:embed find.sql
-var findSQL string
-
-//go:embed find_by_id.sql
-var findByIDSQL string
 
 type definitionDocument struct {
 	Tasks []definitionTask `json:"tasks"`
@@ -82,6 +72,10 @@ func (s Repository) FindByID(ctx context.Context, id string) (service.PublishedD
 		return service.PublishedDefinition{}, service.ErrDefinitionNotFound
 	}
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && (pgErr.Code == "22P02" || pgErr.Code == "22021") {
+			return service.PublishedDefinition{}, service.ErrInvalidDefinitionID
+		}
 		return service.PublishedDefinition{}, fmt.Errorf("read definition by id: %w", err)
 	}
 	return decodeDefinition(published, key, content)

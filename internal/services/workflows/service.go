@@ -5,19 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"time"
 	"unicode/utf8"
 
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/services/definitions"
+	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/task"
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/workflow"
 )
 
 var (
 	ErrInvalidRequest    = errors.New("invalid_request")
 	ErrUnsupportedPolicy = errors.New("unsupported_policy")
-	uuidPattern          = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 )
 
 type StartRequest struct {
@@ -39,6 +38,23 @@ type TaskStart struct {
 	CreatedAt   time.Time
 }
 
+type StartedTask struct {
+	ID           string
+	WorkflowID   string
+	Key          string
+	Status       task.Status
+	Input        workflow.Payload
+	MaxAttempts  int32
+	AttemptCount int32
+	CreatedAt    time.Time
+	AvailableAt  time.Time
+}
+
+type Wakeup struct {
+	WorkflowID string
+	CreatedAt  time.Time
+}
+
 type DefinitionRepository interface {
 	FindByID(context.Context, string) (definitions.PublishedDefinition, error)
 }
@@ -50,8 +66,8 @@ type Repository interface {
 // All writes belong to one READ COMMITTED transaction owned by the service.
 type Transaction interface {
 	InsertWorkflow(context.Context, StartRequest) (StartedWorkflow, error)
-	InsertTask(context.Context, TaskStart) error
-	Enqueue(context.Context, StartedWorkflow) error
+	InsertTask(context.Context, TaskStart) (StartedTask, error)
+	Enqueue(context.Context, StartedWorkflow) (Wakeup, error)
 	Commit() error
 	Rollback() error
 }
@@ -62,9 +78,6 @@ type Service struct {
 }
 
 func (s Service) StartWorkflow(ctx context.Context, request StartRequest) (StartedWorkflow, error) {
-	if !uuidPattern.MatchString(request.DefinitionID) {
-		return StartedWorkflow{}, ErrInvalidRequest
-	}
 	request.Input.Value = slices.Clone(request.Input.Value)
 	if len(request.Input.Value) == 0 {
 		request.Input.Value = json.RawMessage("null")
@@ -74,6 +87,9 @@ func (s Service) StartWorkflow(ctx context.Context, request StartRequest) (Start
 	}
 	// Published definitions cannot change, so this read needs no execution lock.
 	published, err := s.Definitions.FindByID(ctx, request.DefinitionID)
+	if errors.Is(err, definitions.ErrInvalidDefinitionID) {
+		return StartedWorkflow{}, ErrInvalidRequest
+	}
 	if err != nil {
 		return StartedWorkflow{}, err
 	}
@@ -100,12 +116,12 @@ func (s Service) StartWorkflow(ctx context.Context, request StartRequest) (Start
 		if len(task.DependsOn) == 0 {
 			input = request.Input
 		}
-		if err := tx.InsertTask(ctx, TaskStart{WorkflowID: run.ID, Key: task.ID, Input: input,
+		if _, err := tx.InsertTask(ctx, TaskStart{WorkflowID: run.ID, Key: task.ID, Input: input,
 			MaxAttempts: task.MaxAttempts, CreatedAt: run.CreatedAt}); err != nil {
 			return StartedWorkflow{}, err
 		}
 	}
-	if err := tx.Enqueue(ctx, run); err != nil {
+	if _, err := tx.Enqueue(ctx, run); err != nil {
 		return StartedWorkflow{}, err
 	}
 	if err := tx.Commit(); err != nil {
