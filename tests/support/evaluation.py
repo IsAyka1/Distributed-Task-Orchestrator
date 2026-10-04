@@ -90,6 +90,13 @@ class DatabaseBarrier:
         self.connection.execute("CREATE TRIGGER pause_delete BEFORE DELETE ON orchestrator.workflow_wakeups "
                                 "FOR EACH ROW EXECUTE FUNCTION public.pause_delete()")
 
+    def pause_attempt_insert(self):
+        self.connection.execute(sql.SQL("CREATE FUNCTION public.pause_attempt() RETURNS trigger LANGUAGE plpgsql AS {}")
+            .format(sql.Literal("BEGIN IF NEW.worker_id = 'first' THEN "
+                               f"PERFORM pg_advisory_xact_lock({self.key}); END IF; RETURN NEW; END;")))
+        self.connection.execute("CREATE TRIGGER pause_attempt AFTER INSERT ON orchestrator.task_attempts "
+                                "FOR EACH ROW EXECUTE FUNCTION public.pause_attempt()")
+
     def wait_blocked(self, application_name, blocker_pid):
         deadline = time.monotonic() + 3
         # Observe the actual database lock dependency; elapsed time never proves ordering.

@@ -65,20 +65,18 @@ closure. The one-attempt policy remains in force until stage 4.
 
 ## Task claim
 
-```sql
--- Candidate workflow is already locked; sample database time after locking.
-SELECT id FROM task_runs
-WHERE workflow_run_id = $1
-  AND status = 'READY' AND available_at <= $2
-  AND attempt_count < max_attempt_count
-ORDER BY id
-FOR UPDATE SKIP LOCKED
-LIMIT $3;
-```
+The [claim adapter](../../internal/storage/postgres/claim.go) locks a candidate
+RUNNING workflow with `SKIP LOCKED`, then its existing wakeup and one eligible
+READY task. Discovery never locks tasks before their workflow; status,
+availability and remaining budget are rechecked. Busy candidates may yield no
+work, so callers poll again rather than treating this as proof of queue exhaustion.
 
-Discover candidates without row locks, then lock their workflow with `FOR UPDATE SKIP LOCKED` and recheck that it is RUNNING before this query. In the same transaction, update `status, attempt_count, current_attempt_id, lease_owner, lease_expires_at` and create a task_attempt. Commit before executing the activity. Heartbeat and completion validate `current_attempt_id, lease_owner, status = 'RUNNING'` and an unexpired lease. Reject stale worker reports. Index `(available_at, id) WHERE status = 'READY'` and `(lease_expires_at) WHERE status = 'RUNNING'`.
-
-Bind `$2` to authoritative database time sampled after acquiring the workflow lock, not transaction-start `now()`. Equality with lease expiry is expired. The SQL example uses production database time. Before running time-dependent tests, mock the authoritative time source through an isolated test seam, including SQL time, and align it with the application clock. Do not assume a mocked Go clock changes `now()` in PostgreSQL. Keep transactions and locks real in Python integration tests.
+Sample authoritative database time after locks for attempt timestamps and lease
+expiry. Durations must be positive whole microseconds to match PostgreSQL precision;
+worker identity must be nonempty UTF-8 without NUL. Persist the attempt, task lease,
+wakeup and one revision increment together, preserving an existing wakeup. Return
+work only after commit. An uncertain commit returns no work but may have left a
+RUNNING attempt; do not execute a provisional result. Recovery belongs to stage 3.
 
 ## Workflow reevaluation
 

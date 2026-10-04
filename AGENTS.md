@@ -125,3 +125,12 @@ including definition reads, so lock waiters cannot exhaust the pool needed by
 the lock holder. Recheck the wakeup after locking the workflow; an absent signal
 is a no-op. Rollback preserves the signal; after an uncertain commit, retry by
 workflow ID and recheck it.
+
+## Task claim boundary
+
+Claim one task through `services/queue.Service`; keep the single SQL claim path
+in `storage/postgres`. Use workflow-first `SKIP LOCKED` selection and recheck
+eligibility under locks. Return work only after attempt, lease, wakeup and revision
+commit together. Worker identity is nonempty UTF-8 without NUL; lease duration
+is positive whole microseconds. An empty claim can mean contention, not an empty
+queue; callers poll again. Never execute a provisional result after commit failure.

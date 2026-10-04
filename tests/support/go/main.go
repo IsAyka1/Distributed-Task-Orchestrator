@@ -29,6 +29,7 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 	dir := flags.String("migrations", "", "test migration directory")
 	definitionAction := flags.String("definition", "", "test definition action")
 	workflowAction := flags.String("workflow", "", "test workflow action")
+	claim := flags.Bool("claim", false, "test task claim")
 	instant := flags.String("now", "", "fixed application time")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -42,6 +43,8 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 			err = postgres.Migrate(ctx, conn, os.DirFS(*dir))
 		} else if *definitionAction != "" {
 			err = definitionCommand(ctx, conn, *definitionAction)
+		} else if *claim {
+			err = claimCommand(ctx, conn)
 		} else if *workflowAction != "" {
 			err = workflowCommand(ctx, conn, *workflowAction)
 		} else {
