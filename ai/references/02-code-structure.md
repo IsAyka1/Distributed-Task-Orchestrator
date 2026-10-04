@@ -62,7 +62,11 @@ single-task claim transaction; [`storage/postgres`](../../internal/storage/postg
 owns candidate selection and queue SQL. Empty claims permit polling after contention.
 Heartbeat and recovery remain later-stage capabilities.
 
-`CompleteAttempt` also accepts `attemptID`. Checking only `lease_owner` is insufficient: the same worker identity can report an older attempt after a new claim.
+[`tasks.Service.CompleteAttempt`](../../internal/services/tasks/service.go) owns the
+completion transaction through [`repositories/tasks`](../../internal/repositories/tasks/repository.go).
+Checking only `lease_owner` is insufficient: the same worker can report an older
+attempt after a new claim. Repeated completion is rejected until report deduplication
+is introduced; commit errors never confirm success.
 
 ## Time and reusable test support
 

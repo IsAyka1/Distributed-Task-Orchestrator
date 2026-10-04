@@ -134,3 +134,12 @@ eligibility under locks. Return work only after attempt, lease, wakeup and revis
 commit together. Worker identity is nonempty UTF-8 without NUL; lease duration
 is positive whole microseconds. An empty claim can mean contention, not an empty
 queue; callers poll again. Never execute a provisional result after commit failure.
+
+## Attempt completion boundary
+
+Complete through `services/tasks.Service`; keep its SQL in `repositories/tasks`.
+Lock workflow → wakeup → task → requested attempt before sampling database time.
+Reject stale or duplicate reports without writes. Commit result, cleared lease/token,
+attempt closure, wakeup and revision together. Success accepts JSONB output (omitted
+means null) without error fields; failure accepts optional UTF-8 error text without
+NUL and no non-null output. An unknown commit outcome is not a confirmed completion.

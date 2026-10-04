@@ -97,6 +97,13 @@ class DatabaseBarrier:
         self.connection.execute("CREATE TRIGGER pause_attempt AFTER INSERT ON orchestrator.task_attempts "
                                 "FOR EACH ROW EXECUTE FUNCTION public.pause_attempt()")
 
+    def pause_completion(self):
+        self.connection.execute(sql.SQL("CREATE FUNCTION public.pause_completion() RETURNS trigger LANGUAGE plpgsql AS {}")
+            .format(sql.Literal(f"BEGIN PERFORM pg_advisory_xact_lock({self.key}); RETURN NEW; END;")))
+        self.connection.execute("CREATE TRIGGER pause_completion AFTER UPDATE ON orchestrator.task_runs "
+                                "FOR EACH ROW WHEN (OLD.status = 'RUNNING' AND NEW.status <> 'RUNNING') "
+                                "EXECUTE FUNCTION public.pause_completion()")
+
     def wait_blocked(self, application_name, blocker_pid):
         deadline = time.monotonic() + 3
         # Observe the actual database lock dependency; elapsed time never proves ordering.
