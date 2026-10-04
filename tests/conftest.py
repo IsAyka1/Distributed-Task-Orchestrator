@@ -2,6 +2,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from support.definitions import DefinitionData, Definitions
 from support.workflows import Workflows
+from support.claims import Claims
+from support.evaluation import Execution
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 import os
@@ -171,3 +173,16 @@ def seed_definition(definitions, definition_data):
 @pytest.fixture
 def workflows(application, clock):
     return Workflows(application)
+
+
+@pytest.fixture
+def claims(application, clock):
+    return Claims(application)
+
+
+@pytest.fixture
+def ready_execution(connection, seed_definition, workflows):
+    run = workflows.start(seed_definition("sequence.yaml")["id"], input={"n": 1})
+    result = workflows.evaluate(run["id"])
+    assert result.returncode == 0, result.stderr
+    return Execution(connection, run["id"])

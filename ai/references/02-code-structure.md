@@ -40,7 +40,7 @@ flowchart TD
 | --- | --- |
 | `StartWorkflow` | Validate a definition, create a run and task_runs, enqueue a wakeup |
 | `EvaluateWorkflow` | Lock the workflow then wakeup/tasks, read tasks, activate dependents, apply terminal transitions, delete the wakeup |
-| `ClaimTasks` | Use `SKIP LOCKED`, create an attempt, set the fencing token and lease, commit before execution |
+| `Claim` | Use `SKIP LOCKED`, create an attempt, set the fencing token and lease, commit before execution |
 | `CompleteAttempt` | Validate the attempt and lease, write the result, close the attempt, enqueue a wakeup |
 | `RecoverExpiredLeases` | Close the attempt, choose READY/RETRY_WAIT/FAILED, enqueue a wakeup |
 
@@ -55,11 +55,12 @@ type Activity interface {
     Execute(ctx context.Context, input Payload, idempotencyKey string) (Payload, error)
 }
 
-type TaskQueue interface {
-    Claim(ctx context.Context, workerID string, limit int) ([]ClaimedTask, error)
-    Heartbeat(ctx context.Context, taskID, attemptID uuid.UUID, workerID string) error
-}
 ```
+
+[`services/queue.Service`](../../internal/services/queue/service.go) owns each
+single-task claim transaction; [`storage/postgres`](../../internal/storage/postgres/claim.go)
+owns candidate selection and queue SQL. Empty claims permit polling after contention.
+Heartbeat and recovery remain later-stage capabilities.
 
 `CompleteAttempt` also accepts `attemptID`. Checking only `lease_owner` is insufficient: the same worker identity can report an older attempt after a new claim.
 
