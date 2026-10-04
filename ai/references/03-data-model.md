@@ -80,6 +80,14 @@ RUNNING attempt; do not execute a provisional result. Recovery belongs to stage 
 
 ## Workflow reevaluation
 
+Completion checks the requested attempt against the active token and both stored
+worker identities under locks, then samples database time. Equality with expiry
+is already stale. Result, attempt closure, lease/token clearing, wakeup and revision
+commit together; rejected reports leave all records unchanged. Success accepts a
+JSONB output, defaulting to null, with no error text. Failure accepts optional UTF-8
+error text without NUL and no non-null output. SQL parses UUIDs and rejects malformed
+IDs as `invalid_request`; absent or stale attempts return `stale_attempt`.
+
 Pure evaluation rejects inconsistent task snapshots before proposing changes.
 Terminal runs need no task inspection to consume redundant wakeups; their stored
 result and timestamps must remain unchanged. Recheck the wakeup after acquiring
