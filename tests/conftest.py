@@ -3,6 +3,7 @@ from pathlib import Path
 from support.definitions import DefinitionData, Definitions
 from support.workflows import Workflows
 from support.claims import Claims
+from support.completions import Completions
 from support.evaluation import Execution
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
@@ -178,6 +179,19 @@ def workflows(application, clock):
 @pytest.fixture
 def claims(application, clock):
     return Claims(application)
+
+
+@pytest.fixture
+def completions(application, clock):
+    return Completions(application)
+
+
+@pytest.fixture
+def running_claim(ready_execution, claims, workflows):
+    claimed = claims.claim()
+    result = workflows.evaluate(ready_execution.workflow_id)
+    assert result.returncode == 0, result.stderr
+    return claimed
 
 
 @pytest.fixture
