@@ -13,22 +13,26 @@ import (
 )
 
 func run(ctx context.Context, args []string) error {
-	if len(args) != 1 || (args[0] != "db-check" && args[0] != "migrate") {
-		return fmt.Errorf("usage: orchestrator {db-check|migrate}")
+	if len(args) != 1 || (args[0] != "db-check" && args[0] != "migrate" && args[0] != "run") {
+		return fmt.Errorf("usage: orchestrator {db-check|migrate|run}")
 	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+	commandCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
 	defer cancel()
-	conn, err := postgres.Open(ctx, cfg.DatabaseURL)
+	conn, err := postgres.Open(commandCtx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	if args[0] == "run" {
+		cancel()
+		return runWorker(ctx, conn, cfg.Timeout)
+	}
 	if args[0] == "migrate" {
-		if err := postgres.Migrate(ctx, conn, migrations.Files); err != nil {
+		if err := postgres.Migrate(commandCtx, conn, migrations.Files); err != nil {
 			return fmt.Errorf("migration failed; check migrations, database access and DATABASE_TIMEOUT")
 		}
 	}

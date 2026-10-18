@@ -2,8 +2,8 @@
 
 A distributed task orchestrator built with Go and PostgreSQL.
 
-The executable currently supports database connectivity checks and migrations;
-workflow services follow in later tasks.
+The executable supports database checks, migrations, and a single worker running
+durable sequences. HTTP publication and start endpoints are a later task.
 
 ## Prerequisites
 
@@ -41,7 +41,8 @@ the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
 ## Database commands
 
 Set `DATABASE_URL` to a PostgreSQL connection string with the desired TLS policy.
-`DATABASE_TIMEOUT` bounds connection and migration work (default `10s`, maximum `1m`).
+`DATABASE_TIMEOUT` bounds connection/migration work and each worker database operation
+(default `10s`, maximum `1m`); it does not limit the worker process lifetime.
 The pgx `database/sql` driver owns connection parsing and pooling. Supply runtime
 configuration through your environment or secret manager; never commit it.
 Driver errors are redacted by the CLI.
@@ -58,8 +59,29 @@ Goose records versions in `goose_db_version`, holds a PostgreSQL session advisor
 lock and commits each migration independently. A failing migration rolls back;
 previously completed versions remain applied. Applied files must not be edited;
 Goose tracks versions rather than content checksums. Do not use nontransactional
-migrations or explicit transaction control. Domain tables begin in task 01-02.
+migrations or explicit transaction control. Domain tables live in the `orchestrator` schema.
 Migration cleanup has a separate one-second timeout after command cancellation.
+
+## Run a worker
+
+After applying migrations, start one process:
+
+```sh
+./bin/orchestrator run
+```
+
+The command polls every 100 ms and claims one task at a time with a two-minute
+lease. Registered demo task keys `A`, `B`, `C` each increment `n` and append their
+stable task ID to `keys`: a sequence started with `{"n":1}` produces `n: 4` and
+three keys. Definitions and runs can currently be created through the Go services;
+the CLI does not publish or start them. These pure demos make no external effects.
+
+Activities run after claim commit and must honor cancellation. Their local budget
+includes claim latency and reserves `DATABASE_TIMEOUT` for completion; PostgreSQL
+still decides lease validity. Unknown activities and execution errors fail the attempt.
+Persistence errors stop the process without retrying uncertain commits. SIGINT/SIGTERM
+cancels polling and in-flight work. Interrupted RUNNING attempts remain pending recovery
+until stage 3; restarting alone does not recover them.
 
 ## Test conventions and CI
 
@@ -72,7 +94,7 @@ Python `clock` fixture fixes application time and replaces the database-time
 function only inside its isolated test database. Advance it explicitly; each
 scenario starts fresh. Production uses `clock_timestamp()` through
 `orchestrator.database_now()` and exposes no clock override flag or environment
-variable. Add timer/ticker fakes with their first business consumer. Startup
+variable. Worker unit tests use a shared manual clock with explicit advancement. Startup
 polling and process timeouts bound infrastructure; they do not prove business
 outcomes. See the [test-support contract](ai/references/02-code-structure.md#time-and-reusable-test-support).
 
