@@ -8,11 +8,12 @@ def test_sigterm_cancels_worker_waiting_for_database(application, connection):
     with connection.transaction():
         connection.execute("LOCK TABLE orchestrator.workflow_wakeups IN ACCESS EXCLUSIVE MODE")
         dsn = make_conninfo(application.database.dsn, application_name="worker-shutdown")
-        with application.running("run", DATABASE_URL=dsn) as process:
+        with application.running("run", DATABASE_URL=dsn, HTTP_ADDR="127.0.0.1:0") as process:
             # Observe from autocommit so pg_stat_activity does not retain a transaction snapshot.
             with application.database.connect() as observer:
                 DatabaseBarrier(observer).wait_blocked("worker-shutdown", connection.info.backend_pid)
             process.terminate()
             stdout, stderr = process.communicate(timeout=5)
             assert process.returncode == 0, stderr
-            assert stdout == stderr == ""
+            assert stdout.startswith("HTTP listening on 127.0.0.1:")
+            assert stderr == ""

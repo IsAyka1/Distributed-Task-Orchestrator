@@ -36,3 +36,18 @@ func TestLoad(t *testing.T) {
 		t.Fatalf("config = %+v, error = %v", cfg, err)
 	}
 }
+
+func TestHTTPAddress(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/test")
+	t.Setenv("DATABASE_TIMEOUT", "")
+	t.Setenv("HTTP_ADDR", "")
+	cfg, err := Load()
+	if err != nil || cfg.HTTPAddress != "127.0.0.1:8080" {
+		t.Fatal(cfg.HTTPAddress, err)
+	}
+	t.Setenv("HTTP_ADDR", "127.0.0.1:0")
+	cfg, err = Load()
+	if err != nil || cfg.HTTPAddress != "127.0.0.1:0" {
+		t.Fatal(cfg.HTTPAddress, err)
+	}
+}

@@ -30,6 +30,7 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 	definitionAction := flags.String("definition", "", "test definition action")
 	workflowAction := flags.String("workflow", "", "test workflow action")
 	claim := flags.Bool("claim", false, "test task claim")
+	httpServer := flags.Bool("http", false, "test HTTP server")
 	worker := flags.Bool("worker", false, "test worker iterations")
 	complete := flags.Bool("complete", false, "test attempt completion")
 	instant := flags.String("now", "", "fixed application time")
@@ -45,6 +46,8 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 			err = postgres.Migrate(ctx, conn, os.DirFS(*dir))
 		} else if *definitionAction != "" {
 			err = definitionCommand(ctx, conn, *definitionAction)
+		} else if *httpServer {
+			err = httpCommand(ctx, conn)
 		} else if *claim {
 			err = claimCommand(ctx, conn)
 		} else if *worker {

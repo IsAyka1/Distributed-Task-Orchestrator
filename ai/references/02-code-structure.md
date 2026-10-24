@@ -117,7 +117,7 @@ connection to avoid pool starvation while concurrent evaluators wait on locks.
 ## Database bootstrap
 
 `config.Load` requires `DATABASE_URL`; `DATABASE_TIMEOUT` bounds `db-check` and
-`migrate`, and each worker database operation (default 10 seconds, at most one minute). `storage/postgres` owns the
+`migrate`, each worker database operation and each HTTP creation request (default 10 seconds, at most one minute). `storage/postgres` owns the
 pgx `database/sql` pool, Goose migration provider and database time query. The production
 CLI embeds migrations and has no test-clock configuration. The separate Go probe
 under `tests/support` is built only for integration scenarios.
@@ -157,3 +157,19 @@ Persistence errors stop the loop; uncertain reports are not automatically retrie
 SIGINT/SIGTERM cancels the loop and activity. An interrupted RUNNING attempt requires
 stage-3 recovery. The [shared manual clock](../../tests/support/clock/clock.go) is test
 support only; the production command has no fake-time control.
+
+## HTTP creation
+
+[`api/http`](../../internal/api/http/handler.go) adapts named request/response DTOs to
+publication and start services. It bounds the body while reading, rejects invalid
+Unicode and unknown fields, and returns sanitized contract errors. Missing/null
+required DTO fields are `invalid_request`; semantic definition errors remain
+`invalid_definition`. Every task supplies a `depends_on` array, including `[]`.
+Cancellation-related `sql.ErrTxDone` is classified using the request context as
+`storage_unavailable`; without cancellation it remains an unexpected error.
+
+[`run`](../../cmd/orchestrator/http.go) hosts HTTP and the worker together. `HTTP_ADDR`
+defaults to `127.0.0.1:8080`; the selected listener is announced on stdout. Request
+contexts use `DATABASE_TIMEOUT`. Transport limits separately bound headers, bodies,
+idle connections and shutdown. A component failure cancels the other; SIGINT/SIGTERM
+cancels active requests and activities and allows at most five seconds for HTTP drain.

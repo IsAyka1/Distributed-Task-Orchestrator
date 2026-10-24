@@ -138,3 +138,11 @@ no partial execution. A network failure during commit can leave the caller
 uncertain whether creation succeeded; baseline starts have no retry deduplication.
 Opaque payloads retain JSONB's storage limits: NUL characters, invalid surrogate
 escapes and numbers outside PostgreSQL numeric range return `invalid_request`.
+
+## HTTP creation snapshots
+
+The creation endpoints delegate to the existing publication/start transactions and
+add no persistence state. `POST /workflows` returns the committed creation status
+`PENDING`, even if the worker has already advanced the run before the response arrives.
+Repeated starts create distinct IDs. A transport failure or `storage_unavailable`
+response does not establish whether a POST committed; do not blindly retry it.
