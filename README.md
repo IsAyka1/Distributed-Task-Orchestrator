@@ -2,8 +2,8 @@
 
 A distributed task orchestrator built with Go and PostgreSQL.
 
-The executable supports database checks, migrations, and a single worker running
-durable sequences. HTTP publication and start endpoints are a later task.
+The executable supports database checks, migrations, HTTP publication/start, and a single worker
+running durable sequences.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
 ## Database commands
 
 Set `DATABASE_URL` to a PostgreSQL connection string with the desired TLS policy.
-`DATABASE_TIMEOUT` bounds connection/migration work and each worker database operation
+`DATABASE_TIMEOUT` bounds connection/migration work, worker database operations and HTTP creation requests
 (default `10s`, maximum `1m`); it does not limit the worker process lifetime.
 The pgx `database/sql` driver owns connection parsing and pooling. Supply runtime
 configuration through your environment or secret manager; never commit it.
@@ -62,7 +62,7 @@ Goose tracks versions rather than content checksums. Do not use nontransactional
 migrations or explicit transaction control. Domain tables live in the `orchestrator` schema.
 Migration cleanup has a separate one-second timeout after command cancellation.
 
-## Run a worker
+## Run the API and worker
 
 After applying migrations, start one process:
 
@@ -73,8 +73,7 @@ After applying migrations, start one process:
 The command polls every 100 ms and claims one task at a time with a two-minute
 lease. Registered demo task keys `A`, `B`, `C` each increment `n` and append their
 stable task ID to `keys`: a sequence started with `{"n":1}` produces `n: 4` and
-three keys. Definitions and runs can currently be created through the Go services;
-the CLI does not publish or start them. These pure demos make no external effects.
+three keys. These pure demos make no external effects.
 
 Activities run after claim commit and must honor cancellation. Their local budget
 includes claim latency and reserves `DATABASE_TIMEOUT` for completion; PostgreSQL
@@ -82,6 +81,26 @@ still decides lease validity. Unknown activities and execution errors fail the a
 Persistence errors stop the process without retrying uncertain commits. SIGINT/SIGTERM
 cancels polling and in-flight work. Interrupted RUNNING attempts remain pending recovery
 until stage 3; restarting alone does not recover them.
+
+The HTTP listener defaults to `127.0.0.1:8080`; override it with `HTTP_ADDR`.
+The selected address is printed on startup. There is no authentication in this MVP.
+After `run` starts, publish a sequence and use its returned ID to start a run:
+
+```sh
+curl -i http://127.0.0.1:8080/workflow-definitions \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"demo","name":"sequence","version":1,"tasks":[{"id":"A","type":"activity","depends_on":[]},{"id":"B","type":"activity","depends_on":["A"]},{"id":"C","type":"activity","depends_on":["B"]}]}'
+curl -i http://127.0.0.1:8080/workflows \
+  -H 'Content-Type: application/json' \
+  -d '{"definition_id":"<returned-id>","input":{"n":1}}'
+```
+
+Both endpoints return `201` after commit. Start returns the creation snapshot
+`{"id":"…","status":"PENDING"}`; the worker can advance it immediately. Request bodies
+must be UTF-8 JSON objects of at most 1 MiB. Unknown fields and malformed values are
+rejected; conflicts return `409`. See the [HTTP contract](docs/decisions/0001-mvp-contract.md#http-boundary-and-errors)
+for all errors. A lost response or `503` can have an unknown commit outcome; repeated
+starts create new runs, so do not automatically retry them. Inspection is task 01-11.
 
 ## Test conventions and CI
 

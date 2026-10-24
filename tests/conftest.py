@@ -47,11 +47,11 @@ class Application:
             pytest.fail("Go test process failed or timed out", pytrace=False)
 
     @contextmanager
-    def running(self, *args, **environment):
+    def running(self, *args, binary="orchestrator", **environment):
         env = {"PATH": os.environ["PATH"], "DATABASE_URL": self.database.dsn, "DATABASE_TIMEOUT": "5s"}
         env.update(environment)
         try:
-            process = subprocess.Popen(["/binaries/orchestrator", *args], env=env,
+            process = subprocess.Popen([f"/binaries/{binary}", *args], env=env,
                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except OSError:
             pytest.fail("Go test process could not start", pytrace=False)
@@ -216,3 +216,15 @@ def ready_execution(connection, seed_definition, workflows):
     result = workflows.evaluate(run["id"])
     assert result.returncode == 0, result.stderr
     return Execution(connection, run["id"])
+
+
+@pytest.fixture
+def http_api(application, clock):
+    from support.http import HTTPClient
+    with application.running("-http", binary="probe", TEST_HTTP_NOW=clock.now.isoformat()) as process:
+        client = HTTPClient.from_process(process)
+        yield client
+        process.terminate()
+        stdout, stderr = process.communicate(timeout=5)
+        assert process.returncode == 0, stderr
+        assert stdout == stderr == ""

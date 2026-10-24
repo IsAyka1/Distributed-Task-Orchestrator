@@ -29,7 +29,7 @@ func run(ctx context.Context, args []string) error {
 	defer conn.Close()
 	if args[0] == "run" {
 		cancel()
-		return runWorker(ctx, conn, cfg.Timeout)
+		return runApplication(ctx, conn, cfg)
 	}
 	if args[0] == "migrate" {
 		if err := postgres.Migrate(commandCtx, conn, migrations.Files); err != nil {
