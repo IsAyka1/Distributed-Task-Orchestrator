@@ -48,12 +48,14 @@ func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 		writeError(w, 422, "unsupported_workflow", "Only sequential workflows can start.")
 	case errors.Is(err, workflows.ErrUnsupportedPolicy):
 		writeError(w, 422, "unsupported_policy", "Only one attempt per task is supported.")
+	case errors.Is(err, workflows.ErrWorkflowNotFound):
+		writeError(w, 404, "workflow_not_found", "The workflow does not exist.")
 	case errors.Is(err, definitions.ErrDefinitionNotFound):
 		writeError(w, 404, "definition_not_found", "The definition does not exist.")
 	case errors.Is(err, definitions.ErrDefinitionExists):
 		writeError(w, 409, "definition_version_conflict", "This definition version already exists.")
 	case storageUnavailable(err):
-		writeError(w, 503, "storage_unavailable", "Storage is unavailable; the write may have committed. Do not blindly retry.")
+		writeError(w, 503, "storage_unavailable", "Storage is unavailable; a write may have committed. GET requests may be retried. Do not blindly retry a POST.")
 	default:
 		writeError(w, 500, "internal_error", "The request could not be completed.")
 	}

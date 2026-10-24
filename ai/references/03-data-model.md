@@ -146,3 +146,11 @@ add no persistence state. `POST /workflows` returns the committed creation statu
 `PENDING`, even if the worker has already advanced the run before the response arrives.
 Repeated starts create distinct IDs. A transport failure or `storage_unavailable`
 response does not establish whether a POST committed; do not blindly retry it.
+
+## Inspection snapshots
+
+GET workflow/task responses use one read-only REPEATABLE READ snapshot of committed
+rows, including definition reads. They do not block execution writers with row locks;
+separate HTTP requests need not see the same revision. Task arrays follow dependency
+order. `current_attempt_id` is null after closure, and output null is distinguished
+from a pending result by status. No history table or schema change is required.

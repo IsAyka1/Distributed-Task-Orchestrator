@@ -25,7 +25,7 @@ func runApplication(parent context.Context, db *sql.DB, cfg config.Config) error
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	repository := definitionRepository.Repository{DB: db}
-	handler := httpapi.Handler{
+	handler := httpapi.Handler{Inspection: workflows.Inspector{Repository: workflowRepository.Repository{DB: db}},
 		Definitions: definitions.Service{Repository: repository},
 		Workflows:   workflows.Service{Definitions: repository, Repository: workflowRepository.Repository{DB: db}},
 		Clock:       worker.SystemClock{}, Timeout: cfg.Timeout,

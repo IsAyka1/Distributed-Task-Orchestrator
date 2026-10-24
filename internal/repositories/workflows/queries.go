@@ -37,3 +37,9 @@ var deleteWakeupSQL string
 
 //go:embed next_wakeup.sql
 var nextWakeupSQL string
+
+//go:embed read_workflow.sql
+var readWorkflowSQL string
+
+//go:embed read_tasks.sql
+var readTasksSQL string

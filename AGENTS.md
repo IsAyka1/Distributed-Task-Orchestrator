@@ -166,3 +166,14 @@ Use the request context to classify cancellation-related closed transactions as
 `run` owns the HTTP server and worker lifetime; cancellation stops both and bounds
 HTTP draining. Bind to loopback by default (`HTTP_ADDR` overrides it); the MVP has
 no authentication. Production request clocks remain real.
+
+## HTTP inspection boundary
+
+Read workflow and task details through `services/workflows.Inspector` in one
+read-only REPEATABLE READ transaction per response, including definition reads.
+Do not acquire execution locks for inspection. Return tasks in dependency order
+from the immutable definition; separate requests may observe different commits.
+Let PostgreSQL parse UUIDs, preserve nullable fields, and serialize timestamps in UTC.
+Malformed IDs are `invalid_request`, absent runs are `workflow_not_found`, and
+inconsistent stored snapshots are internal errors. GET may be retried after transient
+storage failure; the POST retry restrictions still apply.
