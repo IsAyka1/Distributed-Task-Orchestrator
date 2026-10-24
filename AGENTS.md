@@ -161,6 +161,8 @@ Validate one UTF-8 JSON object (at most 1 MiB, including chunked bodies), media 
 required DTO fields and unknown fields before calling a service. Return creation
 snapshots only after commit; never retry a POST automatically. Keep error responses
 sanitized and distinguish transient storage failures from unexpected errors.
+Use the request context to classify cancellation-related closed transactions as
+`storage_unavailable`; unexplained transaction misuse remains `internal_error`.
 `run` owns the HTTP server and worker lifetime; cancellation stops both and bounds
 HTTP draining. Bind to loopback by default (`HTTP_ADDR` overrides it); the MVP has
 no authentication. Production request clocks remain real.

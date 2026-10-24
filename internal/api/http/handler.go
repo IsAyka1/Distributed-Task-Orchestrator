@@ -55,12 +55,12 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		spec, ok := request.spec()
 		if !ok {
-			writeServiceError(w, workflows.ErrInvalidRequest)
+			writeServiceError(ctx, w, workflows.ErrInvalidRequest)
 			return
 		}
 		published, err := h.Definitions.Publish(ctx, spec)
 		if err != nil {
-			writeServiceError(w, err)
+			writeServiceError(ctx, w, err)
 			return
 		}
 		d := published.Definition
@@ -71,12 +71,12 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if request.DefinitionID == nil {
-			writeServiceError(w, workflows.ErrInvalidRequest)
+			writeServiceError(ctx, w, workflows.ErrInvalidRequest)
 			return
 		}
 		result, err := h.Workflows.StartWorkflow(ctx, workflows.StartRequest{DefinitionID: *request.DefinitionID, Input: workflow.Payload{Value: request.Input}})
 		if err != nil {
-			writeServiceError(w, err)
+			writeServiceError(ctx, w, err)
 			return
 		}
 		writeJSON(w, 201, StartResponse{result.ID, result.Status})

@@ -15,12 +15,16 @@ class HTTPResponse:
 class HTTPClient:
     address: str
 
-    @classmethod
-    def from_process(cls, process):
+    @staticmethod
+    def read_signal(process):
         with selectors.DefaultSelector() as selector:
             selector.register(process.stdout, selectors.EVENT_READ)
-            assert selector.select(timeout=5), "HTTP server did not announce its listener"
-            line = process.stdout.readline().strip()
+            assert selector.select(timeout=5), "HTTP probe did not announce the expected signal"
+            return process.stdout.readline().strip()
+
+    @classmethod
+    def from_process(cls, process):
+        line = cls.read_signal(process)
         assert line.startswith("HTTP listening on 127.0.0.1:"), "HTTP server startup failed"
         return cls(line.removeprefix("HTTP listening on "))
 

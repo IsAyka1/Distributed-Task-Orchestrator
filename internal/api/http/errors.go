@@ -34,7 +34,11 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, ErrorResponse{ErrorDetail{code, message}})
 }
-func writeServiceError(w http.ResponseWriter, err error) {
+func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
+	// database/sql can finish cancellation's rollback before the service calls Commit.
+	if errors.Is(err, sql.ErrTxDone) && ctx.Err() != nil {
+		err = ctx.Err()
+	}
 	switch {
 	case errors.Is(err, workflows.ErrInvalidRequest), errors.Is(err, definitions.ErrInvalidDefinitionID):
 		writeError(w, 400, "invalid_request", "Check the request fields and input.")

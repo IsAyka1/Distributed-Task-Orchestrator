@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,9 @@ func (s *servicesFake) StartWorkflow(ctx context.Context, request workflows.Star
 	if s.entered != nil {
 		close(s.entered)
 		<-ctx.Done()
+		if s.err != nil {
+			return workflows.StartedWorkflow{}, s.err
+		}
 		return workflows.StartedWorkflow{}, ctx.Err()
 	}
 	return workflows.StartedWorkflow{ID: "run-id", Status: workflow.Pending}, s.err
@@ -160,6 +164,7 @@ func TestErrorMapping(t *testing.T) {
 		{workflows.ErrUnsupportedPolicy, 422, "unsupported_policy"},
 		{workflows.ErrInvalidRequest, 400, "invalid_request"},
 		{context.DeadlineExceeded, 503, "storage_unavailable"},
+		{sql.ErrTxDone, 500, "internal_error"},
 		{io.EOF, 503, "storage_unavailable"},
 		{io.ErrUnexpectedEOF, 503, "storage_unavailable"},
 		{pgconn.ErrConnClosed, 503, "storage_unavailable"},
@@ -223,6 +228,46 @@ func TestNonJSONWhitespaceRejected(t *testing.T) {
 			if len(f.services.starts) != 0 {
 				t.Fatal("non-JSON whitespace reached service")
 			}
+		}
+	}
+}
+
+func TestErrorAfterRequestCancellation(t *testing.T) {
+	for _, shutdown := range []bool{false, true} {
+		for _, tc := range []struct {
+			err    error
+			status int
+			code   string
+		}{
+			{sql.ErrTxDone, 503, "storage_unavailable"},
+			{errors.New("secret unexpected failure"), 500, "internal_error"},
+		} {
+			t.Run(fmt.Sprintf("shutdown=%t/%s", shutdown, tc.code), func(t *testing.T) {
+				f := setup()
+				f.services.entered = make(chan struct{})
+				f.services.err = fmt.Errorf("secret commit workflow: %w", tc.err)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				req := httptest.NewRequest(http.MethodPost, "/workflows", strings.NewReader(validStart)).WithContext(ctx)
+				req.Header.Set("Content-Type", "application/json")
+				result := httptest.NewRecorder()
+				done := make(chan struct{})
+				go func() {
+					f.handler.ServeHTTP(result, req)
+					close(done)
+				}()
+				<-f.services.entered
+				if shutdown {
+					cancel()
+				} else {
+					f.clock.Advance(time.Second)
+				}
+				<-done
+				assertError(t, result, tc.status, tc.code)
+				if len(f.services.starts) != 1 {
+					t.Fatal("cancelled start was retried")
+				}
+			})
 		}
 	}
 }

@@ -30,10 +30,16 @@ func httpCommand(ctx context.Context, db *sql.DB) error {
 	defer listener.Close()
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	clock := testclock.New(instant)
+	var starts workflows.Repository = workflowRepository.Repository{DB: db}
+	if mode := os.Getenv("TEST_HTTP_CANCEL_START"); mode != "" {
+		db.SetMaxOpenConns(1)
+		starts = cancellingStartRepository{Repository: starts, db: db, clock: clock, mode: mode}
+	}
 	repository := definitionRepository.Repository{DB: db}
 	handler := httpapi.Handler{Definitions: definitions.Service{Repository: repository},
-		Workflows: workflows.Service{Definitions: repository, Repository: workflowRepository.Repository{DB: db}},
-		Clock:     testclock.New(instant), Timeout: time.Second}
+		Workflows: workflows.Service{Definitions: repository, Repository: starts},
+		Clock:     clock, Timeout: time.Second}
 	fmt.Printf("HTTP listening on %s\n", listener.Addr())
 	return httpapi.Serve(ctx, listener, handler, time.Second)
 }
