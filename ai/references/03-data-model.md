@@ -78,6 +78,13 @@ wakeup and one revision increment together, preserving an existing wakeup. Retur
 work only after commit. An uncertain commit returns no work but may have left a
 RUNNING attempt; do not execute a provisional result. Recovery belongs to stage 3.
 
+A worker resolves the activity by task key and passes `task_run_id` as its stable
+idempotency key after claim commits. Missing registrations, execution errors and local
+budget expiry close the one-attempt task as FAILED through fenced completion, with
+`unknown_activity`, `activity_failed` or `activity_timeout` respectively. Arbitrary
+activity error text is not persisted. Shutdown or an unconfirmed completion can leave
+a RUNNING attempt; stage 3 supplies recovery.
+
 ## Workflow reevaluation
 
 Completion checks the requested attempt against the active token and both stored

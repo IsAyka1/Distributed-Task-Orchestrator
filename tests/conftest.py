@@ -46,6 +46,22 @@ class Application:
         except (OSError, subprocess.SubprocessError):
             pytest.fail("Go test process failed or timed out", pytrace=False)
 
+    @contextmanager
+    def running(self, *args, **environment):
+        env = {"PATH": os.environ["PATH"], "DATABASE_URL": self.database.dsn, "DATABASE_TIMEOUT": "5s"}
+        env.update(environment)
+        try:
+            process = subprocess.Popen(["/binaries/orchestrator", *args], env=env,
+                                       text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except OSError:
+            pytest.fail("Go test process could not start", pytrace=False)
+        try:
+            yield process
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=5)
+
     def migrate(self):
         result = self.run("migrate")
         assert result.returncode == 0, result.stderr

@@ -34,3 +34,6 @@ var updateEvaluationSQL string
 
 //go:embed delete_wakeup.sql
 var deleteWakeupSQL string
+
+//go:embed next_wakeup.sql
+var nextWakeupSQL string

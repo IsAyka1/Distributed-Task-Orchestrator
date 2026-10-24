@@ -117,7 +117,7 @@ connection to avoid pool starvation while concurrent evaluators wait on locks.
 ## Database bootstrap
 
 `config.Load` requires `DATABASE_URL`; `DATABASE_TIMEOUT` bounds `db-check` and
-`migrate` (default 10 seconds, at most one minute). `storage/postgres` owns the
+`migrate`, and each worker database operation (default 10 seconds, at most one minute). `storage/postgres` owns the
 pgx `database/sql` pool, Goose migration provider and database time query. The production
 CLI embeds migrations and has no test-clock configuration. The separate Go probe
 under `tests/support` is built only for integration scenarios.
@@ -139,3 +139,21 @@ transaction through a repository transaction interface. Definition reads may
 precede it because publication is immutable; all execution writes use the same
 READ COMMITTED transaction. The [adapter](../../internal/repositories/workflows/repository.go)
 has no activity calls or execution loops.
+
+## Worker execution
+
+[`worker.Runner`](../../internal/worker/runner.go) processes one discovered wakeup
+and one committed claim per iteration, polling again on empty/contended claims.
+Discovery holds no transaction; evaluation rechecks the signal under its existing
+lock boundary. The composition root wires services and registers activities by
+task key, as required by the MVP contract.
+
+Activities receive the stable task ID, honor cancellation, and return JSONB-compatible
+payloads. The injected clock bounds claim, execution and completion: the activity
+budget starts before claim and reserves a database-operation timeout for completion.
+This is a cooperative limit; database fencing still rejects late reports. Unknown
+activities and activity errors fail the attempt without persisting arbitrary error text.
+Persistence errors stop the loop; uncertain reports are not automatically retried.
+SIGINT/SIGTERM cancels the loop and activity. An interrupted RUNNING attempt requires
+stage-3 recovery. The [shared manual clock](../../tests/support/clock/clock.go) is test
+support only; the production command has no fake-time control.

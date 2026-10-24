@@ -30,6 +30,7 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 	definitionAction := flags.String("definition", "", "test definition action")
 	workflowAction := flags.String("workflow", "", "test workflow action")
 	claim := flags.Bool("claim", false, "test task claim")
+	worker := flags.Bool("worker", false, "test worker iterations")
 	complete := flags.Bool("complete", false, "test attempt completion")
 	instant := flags.String("now", "", "fixed application time")
 	if err := flags.Parse(args); err != nil {
@@ -46,6 +47,8 @@ func run(args []string, open func(context.Context, string) (*sql.DB, error)) err
 			err = definitionCommand(ctx, conn, *definitionAction)
 		} else if *claim {
 			err = claimCommand(ctx, conn)
+		} else if *worker {
+			err = workerCommand(ctx, conn)
 		} else if *complete {
 			err = completionCommand(ctx, conn)
 		} else if *workflowAction != "" {

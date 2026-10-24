@@ -143,3 +143,13 @@ Reject stale or duplicate reports without writes. Commit result, cleared lease/t
 attempt closure, wakeup and revision together. Success accepts JSONB output (omitted
 means null) without error fields; failure accepts optional UTF-8 error text without
 NUL and no non-null output. An unknown commit outcome is not a confirmed completion.
+
+## Worker execution boundary
+
+Resolve activities by task key and execute only committed claims, passing the stable
+`task_run_id` as the external idempotency key. Keep activity calls outside transactions.
+Activities must honor cancellation and return JSONB-compatible output. Start the local
+activity budget before claim and reserve time for completion; database lease fencing
+remains authoritative. Stop on persistence errors without retrying uncertain reports.
+Shutdown cancels loops and in-flight activities; interrupted RUNNING attempts need
+stage-3 recovery. Production clocks stay real; inject clocks only through Go interfaces.
