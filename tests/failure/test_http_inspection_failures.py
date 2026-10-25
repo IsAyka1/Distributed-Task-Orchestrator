@@ -79,3 +79,17 @@ def test_inspection_unexpected_database_error_is_sanitized(http_api, connection,
     response = http_api.request(f"/workflows/{ready_execution.workflow_id}", method="GET")
     assert response.status == 500 and response.body["error"]["code"] == "internal_error"
     assert "secret" not in str(response.body) and "SELECT" not in str(response.body)
+
+
+@pytest.mark.parametrize("status", ["", "UNKNOWN_SECRET_STATUS"])
+@pytest.mark.parametrize("target,suffix", [("workflow", ""), ("workflow", "/tasks"), ("task", "/tasks")])
+def test_inspection_unknown_status_is_sanitized(http_api, connection, ready_execution, target, suffix, status):
+    run_id = ready_execution.workflow_id
+    if target == "workflow":
+        connection.execute("UPDATE orchestrator.workflow_runs SET status=%s WHERE id=%s", (status, run_id))
+    else:
+        connection.execute("UPDATE orchestrator.task_runs SET status=%s WHERE workflow_run_id=%s AND task_key='C'",
+                           (status, run_id))
+    response = http_api.request(f"/workflows/{run_id}{suffix}", method="GET")
+    assert response.status == 500
+    assert response.body == {"error": {"code": "internal_error", "message": "The request could not be completed."}}

@@ -153,4 +153,6 @@ GET workflow/task responses use one read-only REPEATABLE READ snapshot of commit
 rows, including definition reads. They do not block execution writers with row locks;
 separate HTTP requests need not see the same revision. Task arrays follow dependency
 order. `current_attempt_id` is null after closure, and output null is distinguished
-from a pending result by status. No history table or schema change is required.
+from a pending result by status. Unknown stored workflow or task statuses are
+inconsistent snapshots and produce sanitized `internal_error` responses. No history
+table or schema change is required.

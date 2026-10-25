@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/services/definitions"
+	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/task"
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/workflow"
 )
 
@@ -50,7 +51,7 @@ func inspectionSetup(t *testing.T) (*inspectionFake, Inspector) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &inspectionFake{run: WorkflowDetails{ID: "run", DefinitionID: "definition", Version: 3}, tasks: []TaskDetails{{Key: "alpha"}, {Key: "last"}, {Key: "zeta"}}, definition: definitions.PublishedDefinition{Definition: d}, err: errors.New("storage failure")}
+	f := &inspectionFake{run: WorkflowDetails{ID: "run", DefinitionID: "definition", Status: workflow.Running, Version: 3}, tasks: []TaskDetails{{Key: "alpha", Status: task.Ready}, {Key: "last", Status: task.Pending}, {Key: "zeta", Status: task.Succeeded}}, definition: definitions.PublishedDefinition{Definition: d}, err: errors.New("storage failure")}
 	return f, Inspector{Repository: f}
 }
 func TestInspectionSnapshot(t *testing.T) {
@@ -106,7 +107,7 @@ func TestInspectionRejectsInconsistentTasks(t *testing.T) {
 		f, s := inspectionSetup(t)
 		f.tasks = nil
 		for _, key := range keys {
-			f.tasks = append(f.tasks, TaskDetails{Key: key})
+			f.tasks = append(f.tasks, TaskDetails{Key: key, Status: task.Pending})
 		}
 		if got, err := s.ListTasks(context.Background(), "run"); err == nil || got != nil {
 			t.Fatal(keys, got, err)
@@ -127,6 +128,62 @@ func TestInspectionStoredDefinitionErrorsAreInternal(t *testing.T) {
 		result, got := s.ListTasks(context.Background(), "run")
 		if !errors.Is(got, errInvalidInspection) || result != nil {
 			t.Fatal(result, got)
+		}
+	}
+}
+
+func TestInspectionRejectsUnknownWorkflowStatus(t *testing.T) {
+	for _, status := range []workflow.Status{"", "UNKNOWN", "running", "CANCELLED"} {
+		for _, includeTasks := range []bool{false, true} {
+			f, s := inspectionSetup(t)
+			f.run.Status = status
+			if includeTasks {
+				got, err := s.ListTasks(context.Background(), "run")
+				if !errors.Is(err, errInvalidInspection) || got != nil {
+					t.Fatalf("status %q: tasks=%v err=%v", status, got, err)
+				}
+			} else {
+				got, err := s.GetWorkflow(context.Background(), "run")
+				if !errors.Is(err, errInvalidInspection) || !reflect.DeepEqual(got, WorkflowDetails{}) {
+					t.Fatalf("status %q: run=%v err=%v", status, got, err)
+				}
+			}
+			if !reflect.DeepEqual(f.calls, []string{"begin", "run", "rollback"}) {
+				t.Fatal(f.calls)
+			}
+		}
+	}
+}
+
+func TestInspectionRejectsUnknownTaskStatus(t *testing.T) {
+	for _, status := range []task.Status{"", "UNKNOWN", "ready", "RETRY_WAIT"} {
+		for i := 0; i < 3; i++ {
+			f, s := inspectionSetup(t)
+			f.tasks[i].Status = status
+			got, err := s.ListTasks(context.Background(), "run")
+			if !errors.Is(err, errInvalidInspection) || got != nil {
+				t.Fatalf("task %d status %q: tasks=%v err=%v", i, status, got, err)
+			}
+			if !reflect.DeepEqual(f.calls, []string{"begin", "run", "definition", "tasks", "rollback"}) {
+				t.Fatal(f.calls)
+			}
+		}
+	}
+}
+
+func TestInspectionAcceptsKnownStatuses(t *testing.T) {
+	for _, status := range []workflow.Status{workflow.Pending, workflow.Running, workflow.Succeeded, workflow.Failed} {
+		f, s := inspectionSetup(t)
+		f.run.Status = status
+		if got, err := s.GetWorkflow(context.Background(), "run"); err != nil || got.Status != status {
+			t.Fatal(got, err)
+		}
+	}
+	for _, status := range []task.Status{task.Pending, task.Ready, task.Running, task.Succeeded, task.Failed} {
+		f, s := inspectionSetup(t)
+		f.tasks[0].Status = status
+		if got, err := s.ListTasks(context.Background(), "run"); err != nil || got[1].Status != status {
+			t.Fatal(got, err)
 		}
 	}
 }

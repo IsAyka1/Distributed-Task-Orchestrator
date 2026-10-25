@@ -175,5 +175,6 @@ Do not acquire execution locks for inspection. Return tasks in dependency order
 from the immutable definition; separate requests may observe different commits.
 Let PostgreSQL parse UUIDs, preserve nullable fields, and serialize timestamps in UTC.
 Malformed IDs are `invalid_request`, absent runs are `workflow_not_found`, and
-inconsistent stored snapshots are internal errors. GET may be retried after transient
-storage failure; the POST retry restrictions still apply.
+inconsistent stored snapshots are internal errors, including unknown workflow or task
+statuses. GET may be retried after transient storage failure; the POST retry
+restrictions still apply.

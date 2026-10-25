@@ -57,6 +57,11 @@ func (s Inspector) inspect(ctx context.Context, id string, includeTasks bool) (W
 	if err != nil {
 		return WorkflowDetails{}, nil, err
 	}
+	switch run.Status {
+	case workflow.Pending, workflow.Running, workflow.Succeeded, workflow.Failed:
+	default:
+		return WorkflowDetails{}, nil, errInvalidInspection
+	}
 	var tasks []TaskDetails
 	if includeTasks {
 		published, err := tx.FindDefinition(ctx, run.DefinitionID)
@@ -93,6 +98,11 @@ func orderTasks(definition *workflow.Definition, tasks []TaskDetails) ([]TaskDet
 	}
 	byKey := make(map[string]TaskDetails, len(tasks))
 	for _, value := range tasks {
+		switch value.Status {
+		case task.Pending, task.Ready, task.Running, task.Succeeded, task.Failed:
+		default:
+			return nil, errInvalidInspection
+		}
 		byKey[value.Key] = value
 	}
 	if len(byKey) != len(tasks) {
