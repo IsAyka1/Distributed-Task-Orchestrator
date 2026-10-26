@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -169,6 +170,7 @@ func TestErrorMapping(t *testing.T) {
 		{io.ErrUnexpectedEOF, 503, "storage_unavailable"},
 		{pgconn.ErrConnClosed, 503, "storage_unavailable"},
 		{&pgconn.PgError{Code: "57P01", Message: "secret"}, 503, "storage_unavailable"},
+		{&pgconn.PgError{Code: "55000", Message: "secret query failure"}, 500, "internal_error"},
 		{errors.New("secret unexpected failure"), 500, "internal_error"},
 	}
 	for _, tc := range cases {
@@ -270,4 +272,22 @@ func TestErrorAfterRequestCancellation(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestConnectionRefusalIsStorageUnavailable(t *testing.T) {
+	config, err := pgconn.ParseConfig("host=127.0.0.1 user=secret dbname=secret sslmode=disable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.DialFunc = func(context.Context, string, string) (net.Conn, error) {
+		return nil, &pgconn.PgError{Code: "55000", Message: "secret database refuses connections"}
+	}
+	_, err = pgconn.ConnectConfig(context.Background(), config)
+	var failure *pgconn.ConnectError
+	if !errors.As(err, &failure) {
+		t.Fatalf("expected connection failure, got %T", err)
+	}
+	f := setup()
+	f.services.err = fmt.Errorf("secret connection context: %w", err)
+	assertError(t, f.request("/workflows", validStart, "application/json"), 503, "storage_unavailable")
 }

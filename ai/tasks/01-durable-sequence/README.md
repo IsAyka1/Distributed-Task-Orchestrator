@@ -20,10 +20,12 @@ Follow the order below; each task depends on the previous one. One task maps to 
 | [01-09](09-task.md) | Run one worker and the engine loop | 180–330 |
 | [01-10](10-task.md) | Expose definition publication and workflow start over HTTP | 150–290 |
 | [01-11](11-task.md) | Expose workflow and task inspection over HTTP | 130–250 |
-| [01-12](12-task.md) | Verify sequence restarts and temporary database outages | 0 |
+| [01-12](12-task.md) | Verify sequence restarts and temporary database outages | 4 |
 
 ## Stage acceptance
 
 A single process executes A → B → C through PostgreSQL and resumes from committed progress after restart.
 
 Verify every task's DoD and the working stage scenario. Write integration checks in Python; configure reusable mocks and fake time before execution. Contract/data changes always update the affected references and `AGENTS.md`. Apply the [shared execution rules](../README.md#execution-rules).
+
+See the [restart and outage demonstration](../../../docs/testing/durable-sequence.md) for the stage verification scenarios.
