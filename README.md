@@ -2,7 +2,7 @@
 
 A distributed task orchestrator built with Go and PostgreSQL.
 
-The executable supports database checks, migrations, HTTP publication/start, and a single worker
+The executable supports database checks, migrations, HTTP publication/start/inspection, and a single worker
 running durable sequences.
 
 ## Prerequisites
@@ -41,7 +41,7 @@ the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
 ## Database commands
 
 Set `DATABASE_URL` to a PostgreSQL connection string with the desired TLS policy.
-`DATABASE_TIMEOUT` bounds connection/migration work, worker database operations and HTTP creation requests
+`DATABASE_TIMEOUT` bounds connection/migration work, worker database operations and HTTP requests
 (default `10s`, maximum `1m`); it does not limit the worker process lifetime.
 The pgx `database/sql` driver owns connection parsing and pooling. Supply runtime
 configuration through your environment or secret manager; never commit it.
@@ -100,7 +100,17 @@ Both endpoints return `201` after commit. Start returns the creation snapshot
 must be UTF-8 JSON objects of at most 1 MiB. Unknown fields and malformed values are
 rejected; conflicts return `409`. See the [HTTP contract](docs/decisions/0001-mvp-contract.md#http-boundary-and-errors)
 for all errors. A lost response or `503` can have an unknown commit outcome; repeated
-starts create new runs, so do not automatically retry them. Inspection is task 01-11.
+starts create new runs, so do not automatically retry them. Use the returned run ID to inspect committed progress:
+
+```sh
+curl -i 'http://127.0.0.1:8080/workflows/<run-id>'
+curl -i 'http://127.0.0.1:8080/workflows/<run-id>/tasks'
+```
+
+Each GET returns one consistent snapshot; separate calls may see different commits.
+Tasks are returned in dependency order. Output and the active attempt ID remain
+nullable; use status to distinguish a successful null result from pending work.
+Unknown runs return `404`, malformed IDs return `400`, and GET may be retried after `503`.
 
 ## Test conventions and CI
 

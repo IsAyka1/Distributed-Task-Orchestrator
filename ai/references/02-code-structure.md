@@ -173,3 +173,12 @@ defaults to `127.0.0.1:8080`; the selected listener is announced on stdout. Requ
 contexts use `DATABASE_TIMEOUT`. Transport limits separately bound headers, bodies,
 idle connections and shutdown. A component failure cancels the other; SIGINT/SIGTERM
 cancels active requests and activities and allows at most five seconds for HTTP drain.
+
+## HTTP inspection
+
+The [inspection service](../../internal/services/workflows/inspect.go) owns a read-only
+REPEATABLE READ transaction through its repository. All reads use that transaction's
+connection and no execution locks. It orders the complete task set by the immutable
+definition's dependencies, independent of declaration order or SQL row order.
+The [HTTP adapter](../../internal/api/http/inspect.go) serializes named DTOs, retains
+null fields, converts timestamps to UTC, and shares the bounded request/error boundary.

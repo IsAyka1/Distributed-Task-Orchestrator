@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/services/definitions"
@@ -22,6 +23,7 @@ type Clock interface {
 type Handler struct {
 	Definitions Publisher
 	Workflows   Starter
+	Inspection  Inspector
 	Clock       Clock
 	Timeout     time.Duration
 }
@@ -37,6 +39,10 @@ type StartResponse struct {
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/workflows/") {
+		h.serveInspection(w, r)
+		return
+	}
 	if r.URL.Path != "/workflow-definitions" && r.URL.Path != "/workflows" {
 		writeError(w, 404, "not_found", "This endpoint does not exist.")
 		return

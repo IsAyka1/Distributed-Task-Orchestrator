@@ -37,7 +37,7 @@ func httpCommand(ctx context.Context, db *sql.DB) error {
 		starts = cancellingStartRepository{Repository: starts, db: db, clock: clock, mode: mode}
 	}
 	repository := definitionRepository.Repository{DB: db}
-	handler := httpapi.Handler{Definitions: definitions.Service{Repository: repository},
+	handler := httpapi.Handler{Inspection: workflows.Inspector{Repository: workflowRepository.Repository{DB: db}}, Definitions: definitions.Service{Repository: repository},
 		Workflows: workflows.Service{Definitions: repository, Repository: starts},
 		Clock:     clock, Timeout: time.Second}
 	fmt.Printf("HTTP listening on %s\n", listener.Addr())
