@@ -1,17 +1,17 @@
 # 01-12. Verify sequence restarts and temporary database outages
 
 - Dependency: [01-11](../01-durable-sequence/11-task.md) must meet its acceptance criteria.
-- PR size: estimated **0 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
+- PR size: estimated **4 business-logic lines**; hard limit **500 additions + deletions of business logic**. Tests and documentation are excluded.
 - Sources: [roadmap](../../references/04-roadmap.md), [context](../../references/01-context.md), [code structure](../../references/02-code-structure.md), [data model](../../references/03-data-model.md).
 - Shared requirements: [execution rules](../README.md#execution-rules).
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 
-Add Python failure scenarios and a stage demonstration. Restart between attempts; recovery of a RUNNING attempt is tested in stage 3.
+Add Python failure scenarios and a stage demonstration. Classify database connection-attempt failures as HTTP `storage_unavailable`, preserving ordinary SQL error classification. Restart between attempts; recovery of a RUNNING attempt is tested in stage 3.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
 

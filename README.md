@@ -38,6 +38,9 @@ publishes no ports, and each test uses its own disposable database. Missing
 prerequisites and failed cleanup fail the command. After a forced kill, inspect
 the specific `taskmanager-test-<uuid>` Compose project before cleaning it up.
 
+The [durable sequence demonstration](docs/testing/durable-sequence.md) verifies
+restart between attempts, engine crashes, failed commits and temporary database outages.
+
 ## Database commands
 
 Set `DATABASE_URL` to a PostgreSQL connection string with the desired TLS policy.
