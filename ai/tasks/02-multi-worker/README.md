@@ -8,7 +8,7 @@ Follow the order below; each task depends on the previous one. One task maps to 
 
 | Task | PR outcome | Estimated business-logic lines |
 | --- | --- | --- |
-| [02-01](01-task.md) | Extend claim to bounded batches | 100–220 |
+| [02-01](01-task.md) | Extend claim to bounded batches — Done ([PR #21](https://github.com/IsAyka1/Distributed-Task-Orchestrator/pull/21)) | 100–220 |
 | [02-02](02-task.md) | Run multiple worker processes with backpressure | 120–260 |
 | [02-03](03-task.md) | Prove concurrent claim behavior on PostgreSQL | 0 |
 
