@@ -57,9 +57,13 @@ type Activity interface {
 
 ```
 
-[`services/queue.Service`](../../internal/services/queue/service.go) owns each
-single-task claim transaction; [`storage/postgres`](../../internal/storage/postgres/claim.go)
-owns candidate selection and queue SQL. Empty claims permit polling after contention.
+[`services/queue.Service`](../../internal/services/queue/service.go) owns bounded atomic
+claim transactions; [`storage/postgres`](../../internal/storage/postgres/claim.go)
+owns candidate selection and queue SQL. `ClaimBatch` accepts limits 1–100; the
+single-task `Claim` wrapper delegates with limit 1 and retains `ErrNoTask` for empty
+results. Batch callers receive an empty slice without error, or no results on failure.
+The sequential worker continues to use the wrapper; concurrency/backpressure is a
+separate worker concern. Short or empty batches permit polling after contention.
 Heartbeat and recovery remain later-stage capabilities.
 
 [`tasks.Service.CompleteAttempt`](../../internal/services/tasks/service.go) owns the
@@ -77,7 +81,10 @@ and disposable PostgreSQL/Python services from `docker-compose.test.yml`; missin
 prerequisites fail the gate. Each run uses its own Compose project and cleanup.
 See [development commands](../../README.md#development-commands) for isolation
 and cleanup. Shared fixtures in `tests/conftest.py` provide database lifetimes,
-bounded Go process execution and aligned application/database clock control.
+bounded Go process execution and aligned application/database clock control. The
+isolated database clock reads a fixture row installed before execution; advancing
+time updates that row so active transactions observe it without replacing cached
+SQL function bodies.
 
 Inject time into time-dependent business logic. Configure reusable fake clocks before constructing the tested component, including its timers and tickers; explicitly advance time in assertions. Inject deterministic randomness for jitter. Pure functions can accept an explicit instant rather than reading a clock.
 
@@ -89,7 +96,7 @@ Contract and data changes must update the affected references and `AGENTS.md` in
 
 ## MVP contract boundary
 
-Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named records, payload handling, HTTP errors, state transitions, and workflow-first lock order. All existing execution-state writers lock the workflow before wakeup/task/attempt rows, recheck discovered candidates, and increment the run revision once when changing run/task/attempt data. Claims use one workflow per transaction; leases and attempt fencing exist from stage 1. Activity JSON is an opaque named payload at the orchestrator boundary and validated into activity-specific types by adapters.
+Follow the [MVP decision](../../docs/decisions/0001-mvp-contract.md) for named records, payload handling, HTTP errors, state transitions, and workflow-first lock order. All existing execution-state writers lock the workflow before wakeup/task/attempt rows, recheck discovered candidates, and increment the run revision once when changing run/task/attempt data. Batch claims lock all candidate workflows first, then follow the order within each; other writers use one workflow per transaction; leases and attempt fencing exist from stage 1. Activity JSON is an opaque named payload at the orchestrator boundary and validated into activity-specific types by adapters.
 
 ## Immutable definition interface
 

@@ -7,11 +7,17 @@
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 
 Add a limit parameter, stable available_at/id ordering, and batch-size validation to the single claim implementation.
+
+Use an atomic batch with limits 1–100 and one eligible task per workflow while execution
+is sequential. Acquire all workflow locks before wakeup/task locks; short batches under
+contention are valid. Keep single-task callers on the same implementation with limit 1.
+The [MVP lock contract](../../../docs/decisions/0001-mvp-contract.md#transactions-leases-and-lock-order)
+records this bounded exception to the stage-1 one-workflow transaction rule.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
 

@@ -27,12 +27,16 @@ func TestClaimRejectsInvalidRequestBeforeOpeningTransaction(t *testing.T) {
 }
 
 type claimFake struct {
-	calls     []string
-	fail      string
-	failure   error
-	candidate Candidate
-	now       time.Time
-	updated   ClaimedTask
+	calls      []string
+	fail       string
+	failure    error
+	candidate  Candidate
+	candidates []Candidate
+	limit      int
+	updatedAll []ClaimedTask
+	failAt     int
+	now        time.Time
+	updated    ClaimedTask
 }
 
 func newClaimFake() *claimFake {
@@ -44,20 +48,27 @@ func newClaimFake() *claimFake {
 }
 func (f *claimFake) call(name string) error {
 	f.calls = append(f.calls, name)
-	if f.fail == name {
+	if f.fail == name && (f.failAt == 0 || len(f.updatedAll) == f.failAt) {
 		return f.failure
 	}
 	return nil
 }
-func (f *claimFake) Begin(context.Context) (Transaction, error)  { return f, f.call("begin") }
-func (f *claimFake) LockNext(context.Context) (Candidate, error) { return f.candidate, f.call("lock") }
-func (f *claimFake) Now(context.Context) (time.Time, error)      { return f.now, f.call("now") }
+func (f *claimFake) Begin(context.Context) (Transaction, error) { return f, f.call("begin") }
+func (f *claimFake) LockNext(_ context.Context, limit int) ([]Candidate, error) {
+	f.limit = limit
+	if f.candidates != nil {
+		return f.candidates, f.call("lock")
+	}
+	return []Candidate{f.candidate}, f.call("lock")
+}
+func (f *claimFake) Now(context.Context) (time.Time, error) { return f.now, f.call("now") }
 func (f *claimFake) InsertAttempt(_ context.Context, value AttemptStart) (Attempt, error) {
 	return Attempt{ID: "attempt", TaskID: value.TaskID, Number: value.Number, WorkerID: value.WorkerID,
 		StartedAt: value.At, HeartbeatAt: value.At, Status: task.AttemptRunning}, f.call("insert")
 }
 func (f *claimFake) UpdateTask(_ context.Context, value ClaimedTask) error {
 	f.updated = value
+	f.updatedAll = append(f.updatedAll, value)
 	return f.call("update")
 }
 func (f *claimFake) Enqueue(_ context.Context, id string, at time.Time) (Wakeup, error) {

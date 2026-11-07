@@ -63,11 +63,26 @@ Stage 4 adds RUNNING → RETRY_WAIT → READY for retryable failures with budget
 
 ## Transactions, leases, and lock order
 
-Use short application-owned transactions at READ COMMITTED isolation. Every writer of existing execution state follows this lock order: **workflow row → wakeup row → task rows ordered by ID → attempt rows ordered by ID**. Acquire the workflow row even for claim and heartbeat; this serializes writes within a workflow. A missing wakeup row needs no placeholder lock: its insert/delete is protected by the workflow lock. A transaction may omit rows it does not need but cannot acquire an earlier category after a later one. Process one workflow per transaction; discovery reads acquire no row locks and their candidates must be rechecked after locking.
+Use short application-owned transactions at READ COMMITTED isolation. Every writer of existing execution state follows this lock order: **workflow row → wakeup row → task rows ordered by ID → attempt rows ordered by ID**. Acquire the workflow row even for claim and heartbeat; this serializes writes within a workflow. A missing wakeup row needs no placeholder lock: its insert/delete is protected by the workflow lock. Within a workflow, a transaction may omit rows it does not need but cannot acquire an earlier category after a later one. Process one workflow per transaction except bounded batch claims below; discovery reads acquire no row locks and their candidates must be rechecked after locking.
 
 An evaluator discovers workflow IDs without locking wakeups, locks the workflow first, then its wakeup and tasks, rereads their committed state, applies evaluation, and deletes the wakeup in the same transaction. Terminal runs consume redundant wakeups without changing terminal state.
 
-Claim discovery likewise acquires no task lock first. Lock the candidate workflow with `FOR UPDATE SKIP LOCKED`, then claim eligible task rows with `FOR UPDATE SKIP LOCKED`, rechecking status, availability, and budget. Insert the attempt, increment counters/revision, and set token/owner/expiry atomically. Commit before returning work or making an external call. This intentionally trades per-workflow write concurrency for a single lock protocol; it still permits independent workflows to progress concurrently.
+Claim discovery likewise acquires no task lock first. Batch claim is the stage-2
+exception to the one-workflow rule: request 1–100 tasks, acquire all candidate
+workflow locks with `FOR UPDATE SKIP LOCKED`, then lock each workflow's existing
+wakeup and one eligible task with `FOR UPDATE SKIP LOCKED`. Sequential execution
+allows at most one READY task per workflow. Select and return work by `available_at`,
+then task ID, rechecking status, availability and budget under locks. Contention or
+changed candidates may produce a short/empty batch; do not refill or promise strict
+FIFO under concurrent changes. The limit bounds the selected candidate batch,
+and lease time is sampled after all locks.
+
+Each task gets its own attempt/token/lease; each changed workflow gets one revision
+increment and wakeup. All batch writes commit together before any work is returned
+or external call made. Any write/commit error returns no work, including uncertain
+commit outcomes. Single-task claim delegates to this implementation with limit 1;
+other writers retain one workflow per transaction. Batch callers must reserve local
+capacity and execution budget before claiming; worker concurrency is a separate task.
 
 Completion locks in the same order, validates RUNNING task/workflow, active attempt identity, owner, and a strictly unexpired lease, closes the attempt and updates the task, increments the run revision, and inserts the wakeup with `ON CONFLICT DO NOTHING`, all before commit. Heartbeat and recovery use the same fencing and lock protocol when introduced. At `database_time == lease_expires_at` the lease is expired. Sample authoritative database time after acquiring locks for the guarded mutation, rather than using a transaction-start timestamp that may precede a lock wait. Use the same sampled instant for that mutation's expiry checks and timestamps.
 

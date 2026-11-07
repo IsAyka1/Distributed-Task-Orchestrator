@@ -128,12 +128,18 @@ workflow ID and recheck it.
 
 ## Task claim boundary
 
-Claim one task through `services/queue.Service`; keep the single SQL claim path
-in `storage/postgres`. Use workflow-first `SKIP LOCKED` selection and recheck
-eligibility under locks. Return work only after attempt, lease, wakeup and revision
-commit together. Worker identity is nonempty UTF-8 without NUL; lease duration
-is positive whole microseconds. An empty claim can mean contention, not an empty
-queue; callers poll again. Never execute a provisional result after commit failure.
+Claim through `services/queue.Service`; keep one SQL claim path in `storage/postgres`.
+`ClaimBatch` requires a limit of 1–100 and atomically claims at most one READY task
+per workflow while execution is sequential. `Claim` delegates with limit 1.
+Batch claims are the exception to one workflow per transaction: acquire all candidate
+workflow locks with `SKIP LOCKED` before any wakeup/task locks, then follow the normal
+order within each workflow. Order eligible work by `available_at`, then task ID;
+recheck under locks and sample lease time only after all locks. A contended batch may
+be short or empty; poll again. Return no work on any write or uncertain commit error.
+Each task gets its own attempt and lease; each changed workflow gets one revision
+increment and a wakeup in the same commit. Worker identity is nonempty UTF-8 without
+NUL; lease duration is positive whole microseconds. Batch callers must reserve local
+execution capacity and budget before claiming; never execute provisional results.
 
 ## Attempt completion boundary
 

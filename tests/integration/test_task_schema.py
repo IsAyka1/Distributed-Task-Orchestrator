@@ -234,7 +234,7 @@ def test_migration_over_definition_schema(application, tmp_path):
         shutil.copyfile(Path("/workspace/migrations") / name, tmp_path / name)
     result = application.run("-migrations", str(tmp_path), binary="probe")
     assert result.returncode == 0, result.stderr
-    Clock(application.database).set(INITIAL_TIME)
+    Clock(application.database).install()
     with application.database.connect() as conn:
         workflow_id = insert_run(conn, Definition().insert(conn))
         assert conn.execute("SELECT to_regclass('orchestrator.task_runs')").fetchone() == (None,)

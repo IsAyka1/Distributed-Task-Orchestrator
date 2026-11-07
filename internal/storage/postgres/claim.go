@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/IsAyka1/Distributed-Task-Orchestrator/internal/services/queue"
@@ -24,27 +26,51 @@ func (r ClaimRepository) Begin(ctx context.Context) (queue.Transaction, error) {
 	return claimTransaction{tx}, nil
 }
 
-func (t claimTransaction) LockNext(ctx context.Context) (queue.Candidate, error) {
-	var candidate queue.Candidate
-	err := t.QueryRowContext(ctx, claimWorkflowSQL, workflow.Running, task.Ready).Scan(&candidate.WorkflowID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return queue.Candidate{}, queue.ErrNoTask
-	}
+func (t claimTransaction) LockNext(ctx context.Context, limit int) ([]queue.Candidate, error) {
+	rows, err := t.QueryContext(ctx, claimWorkflowSQL, workflow.Running, task.Ready, limit)
 	if err != nil {
-		return queue.Candidate{}, err
+		return nil, err
 	}
-	var wakeup string
-	err = t.QueryRowContext(ctx, claimWakeupSQL, candidate.WorkflowID).Scan(&wakeup)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return queue.Candidate{}, err
+	defer rows.Close()
+	var workflows []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		workflows = append(workflows, id)
 	}
-	err = t.QueryRowContext(ctx, claimTaskSQL, candidate.WorkflowID, task.Ready).Scan(
-		&candidate.ID, &candidate.Key, &candidate.Input.Value, &candidate.State.Status,
-		&candidate.State.MaxAttemptCount, &candidate.State.AttemptCount, &candidate.AvailableAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return queue.Candidate{}, queue.ErrNoTask
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
-	return candidate, err
+	// Acquire every workflow lock before descending to wakeups and tasks.
+	var candidates []queue.Candidate
+	for _, id := range workflows {
+		var wakeup string
+		err = t.QueryRowContext(ctx, claimWakeupSQL, id).Scan(&wakeup)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		candidate := queue.Candidate{WorkflowID: id}
+		err = t.QueryRowContext(ctx, claimTaskSQL, id, task.Ready).Scan(
+			&candidate.ID, &candidate.Key, &candidate.Input.Value, &candidate.State.Status,
+			&candidate.State.MaxAttemptCount, &candidate.State.AttemptCount, &candidate.AvailableAt)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, candidate)
+	}
+	// Rechecked candidates may differ from the discovery snapshot.
+	slices.SortFunc(candidates, func(a, b queue.Candidate) int {
+		if order := a.AvailableAt.Compare(b.AvailableAt); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.ID, b.ID)
+	})
+	return candidates, nil
 }
 
 func (t claimTransaction) Now(ctx context.Context) (time.Time, error) {
