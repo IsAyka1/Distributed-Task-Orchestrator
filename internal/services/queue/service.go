@@ -21,6 +21,13 @@ type ClaimRequest struct {
 	LeaseDuration time.Duration
 }
 
+const MaxBatchSize = 100
+
+type BatchClaimRequest struct {
+	ClaimRequest
+	Limit int
+}
+
 type Candidate struct {
 	ID, WorkflowID, Key string
 	Input               workflow.Payload
@@ -58,7 +65,7 @@ type Repository interface {
 }
 
 type Transaction interface {
-	LockNext(context.Context) (Candidate, error)
+	LockNext(context.Context, int) ([]Candidate, error)
 	Now(context.Context) (time.Time, error)
 	InsertAttempt(context.Context, AttemptStart) (Attempt, error)
 	UpdateTask(context.Context, ClaimedTask) error
@@ -71,27 +78,59 @@ type Transaction interface {
 type Service struct{ Repository Repository }
 
 func (s Service) Claim(ctx context.Context, request ClaimRequest) (ClaimedTask, error) {
+	batch, err := s.ClaimBatch(ctx, BatchClaimRequest{ClaimRequest: request, Limit: 1})
+	if err != nil {
+		return ClaimedTask{}, err
+	}
+	if len(batch) == 0 {
+		return ClaimedTask{}, ErrNoTask
+	}
+	return batch[0], nil
+}
+
+func (s Service) ClaimBatch(ctx context.Context, request BatchClaimRequest) ([]ClaimedTask, error) {
 	// PostgreSQL timestamps have microsecond precision; do not silently shorten a lease.
 	if request.WorkerID == "" || !utf8.ValidString(request.WorkerID) || strings.ContainsRune(request.WorkerID, 0) ||
-		request.LeaseDuration <= 0 || request.LeaseDuration%time.Microsecond != 0 {
-		return ClaimedTask{}, ErrInvalidRequest
+		request.LeaseDuration <= 0 || request.LeaseDuration%time.Microsecond != 0 ||
+		request.Limit < 1 || request.Limit > MaxBatchSize {
+		return nil, ErrInvalidRequest
 	}
 	tx, err := s.Repository.Begin(ctx)
 	if err != nil {
-		return ClaimedTask{}, err
+		return nil, err
 	}
 	defer tx.Rollback()
-	candidate, err := tx.LockNext(ctx)
+	candidates, err := tx.LockNext(ctx, request.Limit)
 	if err != nil {
-		return ClaimedTask{}, err
+		return nil, err
+	}
+	batch := make([]ClaimedTask, 0, len(candidates))
+	if len(candidates) == 0 {
+		return batch, nil
 	}
 	at, err := tx.Now(ctx)
 	if err != nil {
-		return ClaimedTask{}, err
+		return nil, err
 	}
-	if candidate.AvailableAt.After(at) {
-		return ClaimedTask{}, ErrNoTask
+	for _, candidate := range candidates {
+		if candidate.AvailableAt.After(at) {
+			continue
+		}
+		claimed, err := claimCandidate(ctx, tx, candidate, request.ClaimRequest, at)
+		if err != nil {
+			return nil, err
+		}
+		batch = append(batch, claimed)
 	}
+	if len(batch) > 0 {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+	}
+	return batch, nil
+}
+
+func claimCandidate(ctx context.Context, tx Transaction, candidate Candidate, request ClaimRequest, at time.Time) (ClaimedTask, error) {
 	next, err := task.Transition(candidate.State, task.Claim)
 	if err != nil {
 		return ClaimedTask{}, err
@@ -109,9 +148,6 @@ func (s Service) Claim(ctx context.Context, request ClaimRequest) (ClaimedTask, 
 		return ClaimedTask{}, err
 	}
 	if err := tx.IncrementVersion(ctx, candidate.WorkflowID); err != nil {
-		return ClaimedTask{}, err
-	}
-	if err := tx.Commit(); err != nil {
 		return ClaimedTask{}, err
 	}
 	return claimed, nil

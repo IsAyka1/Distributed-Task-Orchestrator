@@ -65,18 +65,24 @@ closure. The one-attempt policy remains in force until stage 4.
 
 ## Task claim
 
-The [claim adapter](../../internal/storage/postgres/claim.go) locks a candidate
-RUNNING workflow with `SKIP LOCKED`, then its existing wakeup and one eligible
-READY task. Discovery never locks tasks before their workflow; status,
-availability and remaining budget are rechecked. Busy candidates may yield no
-work, so callers poll again rather than treating this as proof of queue exhaustion.
+The [claim adapter](../../internal/storage/postgres/claim.go) selects at most the
+requested number of RUNNING workflows, ordered by their earliest eligible task's
+`available_at`, then task ID. Limits are 1–100. Acquire all selected workflow locks
+with `SKIP LOCKED` before locking any wakeups/tasks; then lock each workflow's
+existing wakeup and one eligible READY task. Sequential execution has at most one
+READY task per workflow. Recheck status, availability and remaining attempt budget.
 
-Sample authoritative database time after locks for attempt timestamps and lease
-expiry. Durations must be positive whole microseconds to match PostgreSQL precision;
-worker identity must be nonempty UTF-8 without NUL. Persist the attempt, task lease,
-wakeup and one revision increment together, preserving an existing wakeup. Return
-work only after commit. An uncertain commit returns no work but may have left a
-RUNNING attempt; do not execute a provisional result. Recovery belongs to stage 3.
+The returned batch is ordered by the rechecked task's `available_at`, then ID.
+Ordering is best effort under contention, not strict FIFO: busy or changed candidates
+can produce a short/empty batch without refilling it. Callers poll again. Sample one
+authoritative database instant after all locks for the batch's attempt timestamps
+and leases. Durations must be positive whole microseconds; worker identity must be
+nonempty UTF-8 without NUL. Each task gets its own attempt and lease, and each changed
+workflow gets one revision increment and a wakeup, preserving existing wakeups.
+
+Commit the whole batch before returning any work; all writes roll back on failure.
+An uncertain commit returns no work but may have left RUNNING attempts; never execute
+provisional results. `Claim` uses the same path with limit 1. Recovery belongs to stage 3.
 
 A worker resolves the activity by task key and passes `task_run_id` as its stable
 idempotency key after claim commits. Missing registrations, execution errors and local
@@ -101,7 +107,7 @@ result and timestamps must remain unchanged. Recheck the wakeup after acquiring
 the workflow lock: an absent signal is a no-op. Rollback retains the signal and discards proposed changes. An
 uncertain commit may be retried by workflow ID because the signal is rechecked.
 
-Update a task and execute `INSERT workflow_wakeups ... ON CONFLICT DO NOTHING` in one transaction. Every writer locks workflow → wakeup (if present) → tasks by ID → attempts by ID, using READ COMMITTED and one workflow per transaction. Discovery reads do not lock wakeups or tasks first. The engine locks the workflow before its wakeup, rereads tasks, evaluates, and deletes the signal atomically. Completion either commits before evaluation sees it or waits and recreates the signal after evaluation commits. Missing wakeup rows are protected by the workflow lock. Claims and heartbeats follow the same order; no external call occurs inside the transaction.
+Update a task and execute `INSERT workflow_wakeups ... ON CONFLICT DO NOTHING` in one transaction. Every writer locks workflow → wakeup (if present) → tasks by ID → attempts by ID, using READ COMMITTED. Writers use one workflow per transaction except bounded batch claims, which acquire all workflow locks first and preserve the remaining order within each workflow. Discovery reads do not lock wakeups or tasks first. The engine locks the workflow before its wakeup, rereads tasks, evaluates, and deletes the signal atomically. Completion either commits before evaluation sees it or waits and recreates the signal after evaluation commits. Missing wakeup rows are protected by the workflow lock. Claims and heartbeats follow the same order; no external call occurs inside the transaction.
 
 Whenever the data model or a contract changes, update the affected reference documents and `AGENTS.md` in the same PR.
 

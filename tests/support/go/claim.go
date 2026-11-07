@@ -13,6 +13,7 @@ import (
 )
 
 type claimInput struct {
+	Limit         *int   `json:"limit"`
 	WorkerID      string `json:"worker_id"`
 	LeaseDuration string `json:"lease_duration"`
 }
@@ -27,8 +28,16 @@ func claimCommand(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	db.SetMaxOpenConns(1)
-	claimed, err := (queue.Service{Repository: postgres.ClaimRepository{DB: db}}).Claim(ctx, queue.ClaimRequest{
-		WorkerID: input.WorkerID, LeaseDuration: duration})
+	service := queue.Service{Repository: postgres.ClaimRepository{DB: db}}
+	request := queue.ClaimRequest{WorkerID: input.WorkerID, LeaseDuration: duration}
+	if input.Limit != nil {
+		batch, err := service.ClaimBatch(ctx, queue.BatchClaimRequest{ClaimRequest: request, Limit: *input.Limit})
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(batch)
+	}
+	claimed, err := service.Claim(ctx, request)
 	if errors.Is(err, queue.ErrNoTask) {
 		return json.NewEncoder(os.Stdout).Encode(nil)
 	}

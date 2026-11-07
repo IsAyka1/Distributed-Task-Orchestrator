@@ -83,11 +83,18 @@ class Clock:
     database: Database
     now: datetime = INITIAL_TIME
 
-    def set(self, instant):
+    def install(self):
         with self.database.connect() as conn:
-            body = sql.SQL("SELECT {}::timestamptz").format(sql.Literal(instant.isoformat())).as_string(conn)
-            conn.execute(sql.SQL("CREATE OR REPLACE FUNCTION orchestrator.database_now() RETURNS timestamptz "
-                                 "LANGUAGE sql VOLATILE AS {}").format(sql.Literal(body)))
+            conn.execute("CREATE TABLE public.test_clock (singleton boolean PRIMARY KEY CHECK (singleton), "
+                         "instant timestamptz NOT NULL)")
+            conn.execute("INSERT INTO public.test_clock VALUES (true, %s)", (self.now,))
+            conn.execute("CREATE OR REPLACE FUNCTION orchestrator.database_now() RETURNS timestamptz "
+                         "LANGUAGE sql VOLATILE AS 'SELECT instant FROM public.test_clock WHERE singleton'")
+
+    def set(self, instant):
+        # Update data, not a function body cached by an in-flight database session.
+        with self.database.connect() as conn:
+            conn.execute("UPDATE public.test_clock SET instant=%s WHERE singleton", (instant,))
         self.now = instant
 
     def advance(self, duration: timedelta):
@@ -151,7 +158,7 @@ def application(database):
 def clock(application):
     application.migrate()
     value = Clock(application.database)
-    value.set(INITIAL_TIME)
+    value.install()
     yield value
     # The enclosing database fixture drops this entire test-only database.
 
@@ -233,3 +240,17 @@ def http_api(application, clock):
         stdout, stderr = process.communicate(timeout=5)
         assert process.returncode == 0, stderr
         assert stdout == stderr == ""
+
+
+@pytest.fixture
+def ready_batch(ready_execution, workflows):
+    definition_id = ready_execution.connection.execute(
+        "SELECT definition_id FROM orchestrator.workflow_runs WHERE id=%s",
+        (ready_execution.workflow_id,)).fetchone()[0]
+    executions = [ready_execution]
+    for _ in range(3):
+        run = workflows.start(str(definition_id), input={"n": 1})
+        result = workflows.evaluate(run["id"])
+        assert result.returncode == 0, result.stderr
+        executions.append(Execution(ready_execution.connection, run["id"]))
+    return executions

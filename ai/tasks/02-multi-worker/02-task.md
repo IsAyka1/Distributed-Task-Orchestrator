@@ -7,11 +7,14 @@
 
 ## Before starting
 
-Create a new dedicated branch from the appropriate base, using `codex/<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
+Create a new dedicated branch from the appropriate base, using `<task-id>-<short-description>` by default. Preserve unrelated changes; do not reuse another task's branch.
 
 ## Outcome and PR scope
 
 Assign unique process worker IDs, bound activity concurrency, and stop claiming during shutdown.
+Reserve free execution slots and local lease budget before `ClaimBatch`; choose a limit
+no larger than both free capacity and `queue.MaxBatchSize`. Accept short/empty batches
+and never execute provisional results after a claim error.
 
 Deliver one independently verifiable PR for this outcome. Keep adjacent capabilities in their own tasks.
 
