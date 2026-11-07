@@ -61,6 +61,10 @@ func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 	}
 }
 func storageUnavailable(err error) bool {
+	var connection *pgconn.ConnectError
+	if errors.As(err, &connection) {
+		return true
+	}
 	var network net.Error
 	var postgres *pgconn.PgError
 	if errors.As(err, &network) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {

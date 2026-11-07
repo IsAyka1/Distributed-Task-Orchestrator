@@ -161,6 +161,8 @@ Validate one UTF-8 JSON object (at most 1 MiB, including chunked bodies), media 
 required DTO fields and unknown fields before calling a service. Return creation
 snapshots only after commit; never retry a POST automatically. Keep error responses
 sanitized and distinguish transient storage failures from unexpected errors.
+Database connection-attempt failures are `storage_unavailable`; do not classify
+unrelated SQL execution errors solely by a connection-refusal SQLSTATE.
 Use the request context to classify cancellation-related closed transactions as
 `storage_unavailable`; unexplained transaction misuse remains `internal_error`.
 `run` owns the HTTP server and worker lifetime; cancellation stops both and bounds

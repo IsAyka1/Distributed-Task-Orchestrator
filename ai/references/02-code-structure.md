@@ -165,6 +165,9 @@ publication and start services. It bounds the body while reading, rejects invali
 Unicode and unknown fields, and returns sanitized contract errors. Missing/null
 required DTO fields are `invalid_request`; semantic definition errors remain
 `invalid_definition`. Every task supplies a `depends_on` array, including `[]`.
+Database connection-attempt failures map to `storage_unavailable` even when the
+server refuses connections with a non-network SQLSTATE; ordinary SQL execution
+errors still use the existing classification.
 Cancellation-related `sql.ErrTxDone` is classified using the request context as
 `storage_unavailable`; without cancellation it remains an unexpected error.
 

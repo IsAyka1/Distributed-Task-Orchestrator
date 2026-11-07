@@ -47,15 +47,20 @@ class Application:
             pytest.fail("Go test process failed or timed out", pytrace=False)
 
     @contextmanager
-    def running(self, *args, binary="orchestrator", **environment):
+    def running(self, *args, binary="orchestrator", input=None, **environment):
         env = {"PATH": os.environ["PATH"], "DATABASE_URL": self.database.dsn, "DATABASE_TIMEOUT": "5s"}
         env.update(environment)
         try:
             process = subprocess.Popen([f"/binaries/{binary}", *args], env=env,
+                                       stdin=subprocess.PIPE if input is not None else None,
                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except OSError:
             pytest.fail("Go test process could not start", pytrace=False)
         try:
+            if input is not None:
+                process.stdin.write(input)
+                process.stdin.close()
+                process.stdin = None
             yield process
         finally:
             if process.poll() is None:
